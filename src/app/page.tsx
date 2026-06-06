@@ -1,65 +1,59 @@
-import Image from "next/image";
+'use client';
+import { useState } from 'react';
+import Image from 'next/image';
+import { Icon } from '@/components/platform/Icons';
+import { CitizenPortal } from '@/components/platform/CitizenPortal';
+import { AdminPanel } from '@/components/platform/AdminPanel';
+import { INBOX, FOLIOS } from '@/data/sedeco';
+import type { InboxItem, FolioData } from '@/data/sedeco';
 
 export default function Home() {
+  const [mode, setMode] = useState<'citizen' | 'admin'>('citizen');
+  const [sub, setSub] = useState('tramite');
+  const [trackFolio, setTrackFolio] = useState<string | null>(null);
+  const [inbox, setInbox] = useState<InboxItem[]>(() => INBOX.map(r => ({ ...r })));
+  const [folios, setFolios] = useState<Record<string, FolioData>>(() => ({ ...FOLIOS }));
+
+  function addFolio(folio: string, tipo: string) {
+    setFolios(f => ({
+      ...f,
+      [folio]: {
+        tipo, estado: 'revision', estadoLabel: 'En revisión',
+        enviado: '5 de junio, 2025', area: 'Dirección de Establecimientos Mercantiles', restante: '3 días hábiles',
+        pendiente: null,
+        historial: [
+          { when: 'Ahora', what: 'Solicitud recibida y en cola de revisión' },
+          { when: 'Ahora', what: 'Documentos validados por OCR' },
+          { when: 'Ahora', what: 'Solicitud enviada correctamente' }
+        ]
+      }
+    }));
+  }
+
+  function resolveCaso(folio: string, kind: string) {
+    setInbox(list => list.map(r => r.folio !== folio ? r : { ...r, status: kind === 'info' ? 'pendiente' : 'resuelto' } as InboxItem));
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <header className="uheader">
+        <div className="uheader-in">
+          <span className="uband"></span>
+          <Image className="ulogo-cdmx" src="/assets/logo_cdmx.png" alt="Gobierno de la Ciudad de México" width={110} height={36} priority />
+          <span className="udiv"></span>
+          <span className="ubrand">Secretar<b>IA</b></span>
+          <span className="uactive" title="Modelo Saptiva KAL en línea"><span className="d"></span>Saptiva KAL · activo</span>
+          <span className="uspace"></span>
+          <div className="mode-switch">
+            <button className={mode === 'citizen' ? 'active' : ''} onClick={() => setMode('citizen')}><Icon name="user" />Ciudadano</button>
+            <button className={mode === 'admin' ? 'active' : ''} onClick={() => setMode('admin')}><Icon name="building" />Funcionario</button>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </header>
+
+      {mode === 'citizen'
+        ? <CitizenPortal sub={sub} setSub={setSub} folios={folios} addFolio={addFolio} trackFolio={trackFolio} setTrackFolio={setTrackFolio} />
+        : <AdminPanel inbox={inbox} resolveCaso={resolveCaso} />}
+    </>
   );
 }
