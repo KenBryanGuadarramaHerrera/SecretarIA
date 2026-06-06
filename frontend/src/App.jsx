@@ -95,8 +95,39 @@ function App() {
     localStorage.setItem('secretaria_rfc', userRfc);
   };
 
+  // Enviar a evaluar y redireccionar al dashboard
+  const handleConfirmSend = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/api/chat/evaluate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Guardar resultado de Claude para prepoblar
+        localStorage.setItem('radar_prepopulate', JSON.stringify(data));
+        
+        // Configurar la sesión para el dashboard de radar_demo
+        sessionStorage.setItem('radar_role', 'business');
+        sessionStorage.setItem('radar_identity', JSON.stringify({ tipo: 'rfc', valor: rfc }));
+        
+        // Redireccionar
+        window.location.href = '/radar_demo/simulador.html';
+      } else {
+        alert('Error al evaluar viabilidad con Claude: ' + (data.detail || 'Error desconocido'));
+      }
+    } catch (err) {
+      alert('Error de red al conectar con el servidor.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Cerrar Sesión (Borrar cache)
   const handleLogout = () => {
+
     localStorage.clear();
     setPhase('login');
     setNombre('');
@@ -726,18 +757,17 @@ function App() {
               <button 
                 className="btn-edit" 
                 onClick={() => setPhase('chat')}
+                disabled={loading}
               >
                 Volver al Chat
               </button>
               <button 
                 className="btn-primary" 
-                onClick={() => {
-                  alert('¡Ficha de Viabilidad enviada con éxito a SEDECO!');
-                  handleLogout();
-                }}
+                onClick={handleConfirmSend}
+                disabled={loading}
                 style={{ marginTop: 0 }}
               >
-                ¡Todo es correcto, Enviar Ficha!
+                {loading ? 'Evaluando reglas con la IA...' : '¡Todo es correcto, Enviar Ficha!'}
               </button>
             </div>
           </div>

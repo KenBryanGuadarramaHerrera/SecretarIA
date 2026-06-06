@@ -1,6 +1,7 @@
 import json
 import re
 import os
+import unicodedata
 from langchain_groq import ChatGroq
 from state import ExpedienteState
 
@@ -10,16 +11,35 @@ llm = ChatGroq(
     temperature=0.3
 )
 
-# Lista básica de groserías en español para validación rápida en código, además de la del LLM
-PROFANITIES = ["wey", "puto", "puta", "pendejo", "pendeja", "cabron", "cabrón", "mierda", "verga", "culero", "chinga"]
+# Lista extendida de groserías en español (principalmente mexicano) para validación robusta
+PROFANITIES = [
+    "wey", "guey", "güey", "puto", "puta", "putos", "putas", "putis", "pendejo", "pendeja", 
+    "pendejos", "pendejas", "pendejada", "pendejadas", "pendejez", "cabron", "cabrón", 
+    "cabrones", "cabrona", "cabronas", "mierda", "mierdas", "mierdero", "mierdilla", 
+    "verga", "vergas", "culero", "culera", "culeros", "culeras", "chinga", "chingar", 
+    "chingon", "chingón", "chingada", "chingado", "chingaderas", "chingadera", "chingaquedito",
+    "pinche", "pinches", "mamon", "mamón", "mamona", "mamones", "mamonas", "jodido", 
+    "jodida", "joder", "madrazo", "madrazos", "putazo", "putazos", "zorra", "zorras",
+    "maricon", "maricón", "maricones", "naco", "naca", "nacos", "nacas", "orto", 
+    "ojete", "ojetes", "pendejear", "pichar", "puñeta", "puñetas", "puñal", "puñales"
+]
 
 def contains_profanity(text: str) -> bool:
     if not text:
         return False
-    text_lower = text.lower()
+    # Normalizar para eliminar acentos
+    text_clean = "".join(c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn').lower()
+    # Limpiar signos de puntuación comunes
+    text_clean = re.sub(r'[.,;:!?¡¿"\'\(\)\-]', ' ', text_clean)
+    words = text_clean.split()
+    
     for word in PROFANITIES:
-        if re.search(r'\b' + re.escape(word) + r'\b', text_lower):
+        word_clean = "".join(c for c in unicodedata.normalize('NFD', word) if unicodedata.category(c) != 'Mn').lower()
+        if word_clean in words:
             return True
+        for w in words:
+            if len(word_clean) > 4 and word_clean in w:
+                return True
     return False
 
 def nodo_agente_viabilidad(state: ExpedienteState) -> ExpedienteState:
@@ -118,24 +138,33 @@ Salida JSON:"""
         
         # Guardar detalles extraídos
         extracted = data.get("extracted_details", {})
+        errors = data.get("validation_errors", [])
+        
+        # Verificar si el último mensaje del usuario contiene lenguaje inapropiado
+        user_messages = [m["content"] for m in state["messages"] if m["role"] == "user"]
+        has_profanity_in_message = False
+        if user_messages:
+            last_user_msg = user_messages[-1]
+            if contains_profanity(last_user_msg):
+                has_profanity_in_message = True
+                errors.append("Se detectó lenguaje inapropiado. Por favor, usa un lenguaje profesional.")
+
         for key in ["titulo", "giro", "descripcion", "ubicacion", "productos_servicios", "cantidad_trabajadores", "extension_m2"]:
             val = extracted.get(key)
             if val is not None:
+                val_str = str(val)
+                # Si el valor o el mensaje contiene groserías, no lo guardamos y limpiamos el campo
+                if contains_profanity(val_str) or has_profanity_in_message:
+                    if contains_profanity(val_str):
+                        errors.append("Se detectó lenguaje inapropiado en los datos ingresados.")
+                    state["business_details"][key] = None
+                    continue
+                
                 # Si el LLM retorna un placeholder o la cadena "null"/"none", tratarlo como None
                 if isinstance(val, str) and val.strip().lower() in ["null", "none", "n/a", "esperando...", "esperando", "no se conoce", "sin especificar"]:
                     state["business_details"][key] = None
                 else:
                     state["business_details"][key] = val
-
-        # Validaciones adicionales del lado de la aplicación (robusto)
-        errors = data.get("validation_errors", [])
-        
-        # Verificar groserías en la conversación completa del usuario
-        user_messages = [m["content"] for m in state["messages"] if m["role"] == "user"]
-        if user_messages:
-            last_user_msg = user_messages[-1]
-            if contains_profanity(last_user_msg):
-                errors.append("Se detectó lenguaje inapropiado. Por favor, usa un lenguaje profesional.")
 
         # Validar cantidad de trabajadores de forma explícita
         workers = state["business_details"].get("cantidad_trabajadores")

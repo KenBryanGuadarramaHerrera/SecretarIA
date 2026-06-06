@@ -496,6 +496,38 @@ async def get_chat_state(email: str):
             "validated": False
         }
 
+
+class MergeRequest(BaseModel):
+    email: str
+
+@app_api.post("/api/chat/evaluate")
+async def evaluate_and_merge(req: MergeRequest):
+    email_key = req.email.strip().lower()
+    db_user = await get_db_user_by_email(email_key)
+    if not db_user or not db_user.is_verified:
+        raise HTTPException(status_code=401, detail="Usuario no autenticado")
+
+    thread_id = user_threads.get(email_key)
+    if not thread_id:
+        raise HTTPException(status_code=400, detail="No hay conversación activa para este usuario")
+
+    config = {"configurable": {"thread_id": thread_id}}
+    try:
+        graph_state = langgraph_app.get_state(config)
+        values = graph_state.values if (graph_state and graph_state.values) else {}
+        business_details = values.get("business_details", {})
+        if not business_details:
+            raise HTTPException(status_code=400, detail="Ficha técnica vacía")
+
+        # Call the Claude merge agent
+        from backend.claude_agent import run_merge_agent
+        result = run_merge_agent(business_details, db_user.rfc)
+        return result
+    except Exception as e:
+        print(f"Error en evaluación y merge con Claude: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al evaluar reglas: {str(e)}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app_api, host="0.0.0.0", port=8000)

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html class="light scroll-smooth" lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Radar CDMX | SEDECO + DENUE + SEDUVI</title>
+
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cdmx: { primary: '#9F2241', secondary: '#691C32', gold: '#BC955C', bg: '#F6F1EB' }
+          },
+          fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    :root {
+      --cdmx-primary:#9F2241; --cdmx-secondary:#691C32; --cdmx-gold:#BC955C;
+      --cdmx-bg:#F6F1EB; --cdmx-gray:#6F7271; --cdmx-success:#2E7D32; --cdmx-danger:#C62828;
+    }
+    body { font-family:'Plus Jakarta Sans',sans-serif; background:var(--cdmx-bg); color:var(--cdmx-secondary); }
+    .dark body, html.dark body { background:#160b10; color:#fff; }
+    .material-symbols-outlined { font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24; }
+    .soft-grid { background-image:radial-gradient(circle at 20% 20%, rgba(188,149,92,.16), transparent 30%),radial-gradient(circle at 80% 10%, rgba(159,34,65,.12), transparent 35%),radial-gradient(circle at 50% 90%, rgba(105,28,50,.10), transparent 30%); }
+    .liquid-glass { background:rgba(255,255,255,.86); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid rgba(159,34,65,.10); box-shadow:0 15px 40px rgba(105,28,50,.08); }
+    .dark .liquid-glass { background:rgba(33,17,25,.86); border-color:rgba(188,149,92,.18); }
+    .nav-link{position:relative;padding-bottom:4px;color:#fff!important;font-weight:800}.nav-link:hover{color:#BC955C!important}.nav-link:after{content:'';position:absolute;width:0;height:2px;bottom:0;left:0;background:#BC955C;transition:.3s}.nav-link:hover:after{width:100%}
+    #map { min-height:560px; height:calc(100vh - 220px); border-radius:2rem; overflow:hidden; border:1px solid rgba(159,34,65,.15); box-shadow:0 20px 60px rgba(105,28,50,.10); z-index:1; }
+    .panel { background:white; border-radius:24px; border:1px solid rgba(159,34,65,.08); box-shadow:0 10px 30px rgba(105,28,50,.05); }
+    .dark .panel { background:#231219; border-color:rgba(188,149,92,.16); }
+    .metric-card { border-radius:2rem; padding:1.25rem; background:white; border:1px solid rgba(159,34,65,.10); box-shadow:0 14px 40px rgba(105,28,50,.06); transition:.25s; }
+    .metric-card:hover{transform:translateY(-3px);box-shadow:0 20px 50px rgba(105,28,50,.12)} .dark .metric-card{background:#231219;border-color:rgba(188,149,92,.16)}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:900;letter-spacing:.02em}.status-dot{width:10px;height:10px;border-radius:50%;display:inline-block}.status-ok{background:#2E7D32;box-shadow:0 0 0 6px rgba(46,125,50,.12)}.status-warn{background:#BC955C;box-shadow:0 0 0 6px rgba(188,149,92,.18)}.status-bad{background:#C62828;box-shadow:0 0 0 6px rgba(198,40,40,.14)}.status-idle{background:#6F7271;box-shadow:0 0 0 6px rgba(111,114,113,.12)}
+    .table-soft{width:100%;border-collapse:collapse}.table-soft th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:rgba(105,28,50,.65);font-weight:900;padding:12px;border-bottom:1px solid rgba(159,34,65,.10);white-space:nowrap}.table-soft td{padding:12px;border-bottom:1px solid rgba(159,34,65,.08);font-size:13px;color:#3A202B;vertical-align:top}.dark .table-soft td{color:#f4e8ec}.table-soft tr:hover{background:rgba(159,34,65,.04)}
+    .radar-map-legend{background:rgba(255,255,255,.94);border:1px solid rgba(159,34,65,.15);border-radius:18px;padding:12px 14px;box-shadow:0 12px 30px rgba(105,28,50,.14);font-family:'Plus Jakarta Sans';font-size:12px;color:#691C32;line-height:1.8}.radar-map-legend .legend-title{font-weight:900;color:#9F2241;margin-bottom:4px}.radar-map-legend .dot{width:10px;height:10px;display:inline-block;border-radius:50%;margin-right:7px}.radar-map-legend .box{width:12px;height:12px;display:inline-block;border:2px solid;margin-right:7px;border-radius:3px}.leaflet-popup-content-wrapper,.leaflet-popup-tip{border-radius:18px}
+    .sidebar-item{display:flex;align-items:center;gap:.85rem;border-radius:1.25rem;padding:.9rem 1rem;font-weight:900;color:#9F2241;transition:.2s}.sidebar-item:hover{background:rgba(159,34,65,.07)}.dark .sidebar-item{color:#f4e8ec}.form-label{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:rgba(159,34,65,.58)}.form-input{margin-top:.5rem;width:100%;border-radius:1rem;border-color:rgba(159,34,65,.15);color:#691C32;font-weight:800}.form-input:focus{border-color:#9F2241;box-shadow:0 0 0 3px rgba(159,34,65,.12)}
+    @media(max-width:1024px){#map{height:520px;min-height:420px}}
+  </style>
+</head>
+<body class="antialiased min-h-screen soft-grid">
+  <nav class="w-full bg-[#9F2241] text-white sticky top-0 z-50 shadow-md">
+    <div class="max-w-[1600px] mx-auto px-5 md:px-10 lg:px-16 py-4">
+      <div class="flex items-center justify-between gap-6">
+        <a class="flex items-center gap-3 shrink-0" href="#">
+          <div class="h-11 w-11 rounded-2xl bg-[#BC955C] text-[#9F2241] flex items-center justify-center shadow-md"><span class="material-symbols-outlined">radar</span></div>
+          <div><span class="block text-2xl lg:text-3xl font-black tracking-tighter uppercase leading-none">Radar CDMX</span><span class="text-[11px] font-bold uppercase tracking-[.18em] text-white/60">SEDECO · DENUE · SEDUVI</span></div>
+        </a>
+        <div class="hidden xl:flex items-center gap-8 font-semibold">
+          <a class="nav-link text-base lg:text-lg" href="#mapa">Mapa</a>
+          <a class="nav-link text-base lg:text-lg" href="#cotejo">Cotejo</a>
+          <a class="nav-link text-base lg:text-lg" href="#denue">DENUE</a>
+          <a class="nav-link text-base lg:text-lg" href="#sedeco">SEDECO Admin</a>
+          <a class="nav-link text-base lg:text-lg" href="simulador.html">Simulador</a>
+          <a class="nav-link text-base lg:text-lg" href="solicitudes.html">Solicitudes</a>
+        </div>
+        <div class="flex items-center gap-3">
+          <a href="login.html" class="hidden md:flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full text-sm font-extrabold"><span class="material-symbols-outlined text-[18px]">login</span>Acceso</a>
+          <button id="themeToggle" class="h-10 w-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center"><span class="material-symbols-outlined">dark_mode</span></button>
+          <button data-persona="business" class="hidden md:flex items-center gap-2 bg-white text-[#9F2241] px-4 py-2 rounded-full text-sm font-extrabold"><span class="material-symbols-outlined text-[18px]">storefront</span>Negocio</button>
+          <button data-persona="sedeco" class="hidden md:flex items-center gap-2 bg-[#BC955C] text-[#9F2241] px-4 py-2 rounded-full text-sm font-extrabold"><span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>SEDECO</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-[1600px] mx-auto px-5 md:px-10 lg:px-16 py-8 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-7">
+    <aside id="sidebar" class="liquid-glass rounded-[2.5rem] p-4 lg:w-80 transition-all duration-300 h-fit lg:sticky lg:top-28">
+      <div class="flex items-center justify-between mb-4 px-2">
+        <div class="sidebar-label"><p class="font-black text-[#9F2241] text-lg">Consola territorial</p><p class="text-xs font-bold text-[#9F2241]/55">Filtros y capas</p></div>
+        <button id="sidebarToggle" class="hidden lg:flex h-10 w-10 rounded-2xl bg-white text-[#9F2241] items-center justify-center border border-[#9F2241]/10"><span class="material-symbols-outlined">dock_to_left</span></button>
+      </div>
+      <div class="space-y-2 mb-5">
+        <button data-persona="sedeco" class="sidebar-item w-full"><span class="material-symbols-outlined">admin_panel_settings</span><span class="sidebar-label">Vista SEDECO</span></button>
+        <button data-persona="business" class="sidebar-item w-full"><span class="material-symbols-outlined">storefront</span><span class="sidebar-label">Vista Usuario / Negocio</span></button>
+      </div>
+      <div class="bg-white/70 dark:bg-black/10 rounded-[2rem] p-4 border border-[#9F2241]/10 space-y-4">
+        <label><span class="form-label">Zona</span><select id="zoneSelect" class="form-input"><option>Centro Histórico</option><option>Roma Norte</option><option>Condesa</option><option>Polanco</option><option>Del Valle</option><option>Coyoacán Centro</option></select></label>
+        <label><span class="form-label">Alcaldía</span><select id="boroughSelect" class="form-input"><option>Cuauhtémoc</option><option>Miguel Hidalgo</option><option>Benito Juárez</option><option>Coyoacán</option><option>Iztapalapa</option></select></label>
+        <label><span class="form-label">Giro / condición DENUE</span><input id="conditionInput" class="form-input" value="cafetería" /></label>
+        <label><span class="form-label">Tipo para cotejo</span><select id="businessType" class="form-input"><option value="cafetería">Cafetería</option><option value="restaurante">Restaurante</option><option value="abarrotes">Abarrotes</option><option value="farmacia">Farmacia</option><option value="estética">Estética</option><option value="servicios">Servicios</option></select></label>
+        <label><span class="form-label">Radio m · máximo DENUE 5000</span><input id="radiusInput" class="form-input" type="number" min="100" max="5000" value="1500" /></label>
+        <div class="grid grid-cols-2 gap-3"><label><span class="form-label">Lat</span><input id="latInput" class="form-input" value="19.432608" /></label><label><span class="form-label">Lng</span><input id="lngInput" class="form-input" value="-99.133209" /></label></div>
+        <button id="useMapCenterBtn" class="w-full bg-white text-[#9F2241] border border-[#9F2241]/15 rounded-2xl py-3 font-black flex items-center justify-center gap-2"><span class="material-symbols-outlined">my_location</span><span class="sidebar-label">Usar centro del mapa</span></button>
+      </div>
+      <div class="mt-5 bg-white/70 dark:bg-black/10 rounded-[2rem] p-4 border border-[#9F2241]/10">
+        <p class="form-label mb-3">Capas</p>
+        <div class="space-y-3 text-sm font-black text-[#691C32] dark:text-white">
+          <label class="flex justify-between gap-3"><span>DENUE</span><input data-layer="denue" type="checkbox" checked /></label>
+          <input data-opacity="denue" type="range" min="20" max="100" value="78" class="w-full accent-[#9F2241]" />
+          <label class="flex justify-between gap-3"><span>Mercados públicos</span><input data-layer="markets" type="checkbox" checked /></label>
+          <label class="flex justify-between gap-3"><span>Uso de suelo SEDUVI</span><input data-layer="zoning" type="checkbox" checked /></label>
+          <input data-opacity="zoning" type="range" min="5" max="80" value="22" class="w-full accent-[#BC955C]" />
+          <label class="flex justify-between gap-3"><span>Inconsistencias</span><input data-layer="inconsistencies" type="checkbox" checked /></label>
+          <label class="flex justify-between gap-3"><span>Radio análisis</span><input data-layer="analysisRadius" type="checkbox" checked /></label>
+        </div>
+      </div>
+    </aside>
+
+    <main class="space-y-7">
+      <section class="liquid-glass rounded-[3rem] p-6 lg:p-9 overflow-hidden relative">
+        <div class="absolute -right-24 -top-24 w-96 h-96 bg-[#BC955C] rounded-full blur-[120px] opacity-25"></div>
+        <div class="relative z-10 grid grid-cols-1 xl:grid-cols-[1.1fr_.9fr] gap-8 items-center">
+          <div>
+            <div class="inline-flex items-center gap-2 bg-[#9F2241]/10 text-[#9F2241] px-4 py-2 rounded-full font-extrabold text-xs uppercase tracking-[.14em] mb-5"><span class="material-symbols-outlined text-[18px]">map_search</span> Inteligencia territorial y auditoría urbana</div>
+            <h1 class="text-4xl md:text-6xl font-black text-[#9F2241] tracking-tight leading-[1.05]">Cotejo operativo DENUE + Mercados + SEDUVI</h1>
+            <p class="text-[#9F2241]/75 font-semibold text-lg leading-relaxed mt-5 max-w-4xl">Dashboard institucional para SEDECO: consulta unidades económicas con la API DENUE de INEGI, integra mercados públicos, superpone polígonos de uso de suelo y detecta inconsistencias urbanas para inspección o política económica.</p>
+            <div class="flex flex-wrap gap-3 mt-6">
+              <button id="queryDENUEBtn" class="bg-[#9F2241] text-white px-6 py-4 rounded-2xl font-black shadow-lg hover:scale-[1.02] transition-transform flex items-center gap-2"><span class="material-symbols-outlined">travel_explore</span>Consultar DENUE</button>
+              <button id="runCrosscheckBtn" class="bg-[#BC955C] text-[#691C32] px-6 py-4 rounded-2xl font-black shadow-lg hover:scale-[1.02] transition-transform flex items-center gap-2"><span class="material-symbols-outlined">rule</span>Cotejar uso de suelo</button>
+              <button id="loadMockBtn" class="bg-white text-[#9F2241] border border-[#9F2241]/15 px-6 py-4 rounded-2xl font-black hover:bg-[#9F2241]/5 flex items-center gap-2"><span class="material-symbols-outlined">dataset</span>Recargar demo</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="metric-card"><p class="form-label">DENUE</p><h3 id="kpiDenue" class="text-4xl font-black text-[#9F2241] mt-2">0</h3><p class="text-xs font-bold text-[#9F2241]/55 mt-2">unidades económicas</p></div>
+            <div class="metric-card"><p class="form-label">Mercados</p><h3 id="kpiMarkets" class="text-4xl font-black text-[#9F2241] mt-2">0</h3><p class="text-xs font-bold text-[#9F2241]/55 mt-2">puntos cargados</p></div>
+            <div class="metric-card"><p class="form-label">Alertas</p><h3 id="kpiIssues" class="text-4xl font-black text-red-600 mt-2">0</h3><p class="text-xs font-bold text-[#9F2241]/55 mt-2">inconsistencias</p></div>
+            <div class="metric-card"><p class="form-label">Cobertura</p><h3 id="kpiCoverage" class="text-4xl font-black text-[#9F2241] mt-2">0%</h3><p class="text-xs font-bold text-[#9F2241]/55 mt-2">fuentes integradas</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="denue" class="liquid-glass rounded-[2.5rem] p-5 lg:p-7">
+        <div class="flex flex-col xl:flex-row justify-between gap-4 mb-5">
+          <div><h2 class="text-2xl font-black text-[#9F2241] flex items-center gap-2"><span class="material-symbols-outlined">hub</span>Conexión DENUE / INEGI</h2><p class="text-sm text-[#9F2241]/65 font-semibold mt-1">Modo demo permite llamada directa. Producción debe usar proxy SEDECO para no exponer token.</p></div>
+          <div id="denueStatusBadge" class="pill bg-gray-100 text-gray-700"><span class="status-dot status-idle"></span>Sin token</div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[1.6fr_1.6fr_.8fr] gap-4">
+          <label><span class="form-label">Token INEGI DENUE</span><input id="tokenInput" type="password" class="form-input" placeholder="Pega tu token INEGI" /></label>
+          <label><span class="form-label">Proxy SEDECO recomendado</span><input id="proxyInput" class="form-input" placeholder="/api/sedeco/denue/buscar" /></label>
+          <div class="flex items-end"><button id="exportGeoJSONBtn" class="w-full bg-white text-[#9F2241] border border-[#9F2241]/15 rounded-2xl py-3 font-black flex items-center justify-center gap-2"><span class="material-symbols-outlined">download</span>GeoJSON</button></div>
+        </div>
+      </section>
+
+      <section id="mapa" class="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-7">
+        <div class="liquid-glass rounded-[2.5rem] p-4 lg:p-6"><div id="map"></div></div>
+        <aside class="space-y-5">
+          <div data-persona-panel="business" class="panel p-6 hidden"><p class="form-label">Vista Usuario / Negocio</p><div class="flex items-end gap-2 mt-2"><span id="businessScore" class="text-6xl font-black text-[#9F2241]">78</span><span class="font-black text-[#9F2241]/50 pb-2">/100</span></div><p id="businessScoreLabel" class="font-black text-green-700 mt-2">Viabilidad buena</p><p id="businessInsight" class="text-sm font-semibold text-[#691C32]/65 mt-3 leading-relaxed">Conecta DENUE para estimar competencia real.</p></div>
+          <div data-persona-panel="sedeco" id="sedeco" class="panel p-6"><p class="form-label">Vista SEDECO Administrativa</p><h3 class="text-2xl font-black text-[#9F2241] mt-2">Auditoría territorial</h3><p class="text-sm font-semibold text-[#691C32]/65 mt-3">Prioriza inconsistencias, inspecciones y zonas de oportunidad económica.</p><div class="grid grid-cols-2 gap-3 mt-5"><div class="bg-[#F6F1EB] rounded-2xl p-4"><p class="form-label">Score</p><p id="kpiScore" class="text-3xl font-black text-[#9F2241]">0</p></div><div class="bg-[#F6F1EB] rounded-2xl p-4"><p class="form-label">Zonas</p><p id="kpiZoning" class="text-3xl font-black text-[#9F2241]">0</p></div></div></div>
+          <div class="panel p-5"><h3 class="font-black text-[#9F2241] mb-4">Actividad económica</h3><canvas id="activityChart" height="200"></canvas></div>
+          <div class="panel p-5"><h3 class="font-black text-[#9F2241] mb-4">Uso de suelo</h3><canvas id="zoningChart" height="180"></canvas></div>
+        </aside>
+      </section>
+
+      <section id="cotejo" class="grid grid-cols-1 xl:grid-cols-[1.2fr_.8fr] gap-7">
+        <div class="liquid-glass rounded-[2.5rem] p-6 overflow-hidden">
+          <div class="flex flex-col md:flex-row justify-between gap-4 mb-5"><div><h2 class="text-2xl font-black text-[#9F2241]">Tabla de inconsistencias urbanas</h2><p class="text-sm font-semibold text-[#9F2241]/65">Haz clic en una fila para hacer flyTo en el mapa y abrir ficha de inspección.</p></div><button onclick="document.getElementById('fileInput').click()" class="bg-white text-[#9F2241] border border-[#9F2241]/15 px-5 py-3 rounded-2xl font-black flex items-center gap-2"><span class="material-symbols-outlined">upload_file</span>Subir capa</button><input id="fileInput" type="file" accept=".csv,.json,.geojson" multiple class="hidden" /></div>
+          <div class="overflow-auto rounded-[2rem] bg-white border border-[#9F2241]/10"><table class="table-soft min-w-full"><thead><tr><th>Tipo</th><th>Fuente</th><th>Problema</th><th>Alcaldía</th><th>Prioridad</th><th>Acción</th></tr></thead><tbody id="issuesTableBody"></tbody></table></div>
+        </div>
+        <div class="liquid-glass rounded-[2.5rem] p-6"><h3 class="text-xl font-black text-[#9F2241] mb-4">Comparador territorial</h3><canvas id="compareChart" height="270"></canvas><div class="mt-5 bg-[#691C32] text-white rounded-[2rem] p-5"><p class="text-xs font-black uppercase tracking-[.16em] text-[#BC955C] mb-2">Agente IA · API_REPLACE</p><p class="text-sm leading-relaxed text-white/80">Enviar métricas, capas e inconsistencias a <code>/api/agents/territorial-brief</code> para producir recomendaciones de política económica.</p></div></div>
+      </section>
+
+      <section class="liquid-glass rounded-[2.5rem] p-6"><h2 class="text-2xl font-black text-[#9F2241] mb-4">Registros DENUE cargados</h2><div class="overflow-auto rounded-[2rem] bg-white border border-[#9F2241]/10"><table class="table-soft min-w-full"><thead><tr><th>Nombre</th><th>Clase</th><th>Alcaldía</th><th>Estrato</th></tr></thead><tbody id="denueTableBody"></tbody></table></div></section>
+
+      <section class="liquid-glass rounded-[2.5rem] p-6"><h2 class="text-2xl font-black text-[#9F2241] mb-4">JSON operativo</h2><pre id="jsonContract" class="bg-[#691C32] text-white rounded-[2rem] p-5 text-xs leading-relaxed overflow-auto whitespace-pre-wrap"></pre></section>
+    </main>
+  </div>
+
+  <aside id="inspectionDrawer" class="fixed top-0 right-0 h-full w-full sm:w-[460px] bg-[#F6F1EB] dark:bg-[#160b10] z-[1000] shadow-2xl translate-x-full transition-transform duration-300 overflow-y-auto border-l border-[#9F2241]/10">
+    <div class="sticky top-0 bg-[#9F2241] text-white p-5 flex items-center justify-between z-10"><div><p class="text-xs font-black uppercase tracking-[.16em] text-white/60">Drawer</p><h2 class="text-xl font-black">Ficha de inspección</h2></div><button id="closeDrawerBtn" class="h-11 w-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"><span class="material-symbols-outlined">close</span></button></div>
+    <div id="inspectionContent" class="p-5"></div>
+  </aside>
+
+  <div id="loadingOverlay" class="hidden fixed inset-0 bg-[#691C32]/35 backdrop-blur-sm z-[1200] flex items-center justify-center"><div class="bg-white rounded-[2rem] p-8 shadow-2xl text-center max-w-sm"><div class="h-12 w-12 mx-auto border-4 border-[#9F2241]/20 border-t-[#9F2241] rounded-full animate-spin"></div><p id="loadingMessage" class="font-black text-[#9F2241] mt-5">Procesando...</p><p class="text-sm font-semibold text-[#691C32]/60 mt-2">Consultando y normalizando capas distribuidas.</p></div></div>
+  <div id="toastContainer" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[1300] w-[min(92vw,560px)]"></div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

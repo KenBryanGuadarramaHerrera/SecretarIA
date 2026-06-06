@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html class="light scroll-smooth" lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Radar CDMX | SEDECO · Solicitudes</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script>tailwind.config={theme:{extend:{colors:{cdmx:{primary:'#9F2241',secondary:'#691C32',gold:'#BC955C',bg:'#F6F1EB'}},fontFamily:{sans:['Plus Jakarta Sans','sans-serif']}}}};</script>
+  <style>
+    :root{--cdmx-primary:#9F2241;--cdmx-secondary:#691C32;--cdmx-gold:#BC955C;--cdmx-bg:#F6F1EB;}
+    body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--cdmx-bg);color:var(--cdmx-secondary);}
+    .material-symbols-outlined{font-variation-settings:'FILL' 1,'wght' 400;}
+    .soft-grid{background-image:radial-gradient(circle at 18% 18%,rgba(188,149,92,.16),transparent 32%),radial-gradient(circle at 82% 12%,rgba(159,34,65,.12),transparent 36%);}
+    .liquid-glass{background:rgba(255,255,255,.88);backdrop-filter:blur(14px);border:1px solid rgba(159,34,65,.10);box-shadow:0 15px 40px rgba(105,28,50,.08);}
+    .metric-card{border-radius:1.5rem;padding:1.1rem 1.25rem;background:#fff;border:1px solid rgba(159,34,65,.10);box-shadow:0 14px 40px rgba(105,28,50,.06)}
+    .form-input{border-radius:1rem;border-color:rgba(159,34,65,.18);color:#691C32;font-weight:800;padding:.6rem 1rem;border-width:1px}
+    .form-input:focus{border-color:#9F2241;box-shadow:0 0 0 3px rgba(159,34,65,.12);outline:none}
+    .form-label{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:rgba(159,34,65,.58)}
+    .table-soft{width:100%;border-collapse:collapse}
+    .table-soft th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:rgba(105,28,50,.65);font-weight:900;padding:12px;border-bottom:1px solid rgba(159,34,65,.10);white-space:nowrap;text-align:left}
+    .table-soft td{padding:12px;border-bottom:1px solid rgba(159,34,65,.08);font-size:13px;color:#3A202B;vertical-align:middle}
+    .table-soft tr:hover{background:rgba(159,34,65,.04)}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:11px;font-weight:900}
+    .btn-a{padding:.4rem .7rem;border-radius:.7rem;font-weight:900;font-size:12px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;border:none}
+    .drawer{position:fixed;top:0;right:0;height:100%;width:min(92vw,460px);background:var(--cdmx-bg);z-index:1000;box-shadow:-20px 0 60px rgba(105,28,50,.18);transform:translateX(100%);transition:transform .3s;overflow-y:auto}
+    .drawer.open{transform:translateX(0)}
+  </style>
+</head>
+<body class="antialiased min-h-screen soft-grid">
+  <nav class="w-full bg-[#9F2241] text-white sticky top-0 z-50 shadow-md">
+    <div class="max-w-[1500px] mx-auto px-5 md:px-10 py-4 flex items-center justify-between">
+      <a class="flex items-center gap-3" href="#"><div class="h-11 w-11 rounded-2xl bg-[#BC955C] text-[#9F2241] flex items-center justify-center"><span class="material-symbols-outlined">admin_panel_settings</span></div><div><span class="block text-2xl font-black tracking-tighter uppercase leading-none">Radar CDMX</span><span class="text-[11px] font-bold uppercase tracking-[.18em] text-white/60">SEDECO · Solicitudes</span></div></a>
+      <div class="flex items-center gap-3">
+        <a href="index.html" class="hidden md:flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full text-sm font-extrabold"><span class="material-symbols-outlined text-[18px]">map</span>Mapa territorial</a>
+        <button onclick="salir()" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full text-sm font-extrabold flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">logout</span>Salir</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-[1500px] mx-auto px-5 md:px-10 py-8 space-y-6">
+    <div>
+      <h1 class="text-3xl md:text-4xl font-black text-[#9F2241]">Bandeja de solicitudes</h1>
+      <p class="text-[#691C32]/70 font-semibold mt-1">Revisa el diagnóstico de los agentes IA y resuelve cada trámite.</p>
+    </div>
+
+    <div id="kpis" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></div>
+
+    <div class="liquid-glass rounded-[2.5rem] p-5 lg:p-7">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
+        <h2 class="text-xl font-black text-[#9F2241] flex items-center gap-2"><span class="material-symbols-outlined">inbox</span>Todas las solicitudes</h2>
+        <div class="flex gap-2">
+          <input id="buscar" class="form-input" placeholder="Buscar folio, solicitante, giro..." oninput="pintar()" />
+          <select id="filtroEstado" class="form-input" onchange="pintar()"><option value="">Todos los estados</option><option>Recibida</option><option>En revisión</option><option>Prevenida</option><option>Aprobada</option><option>Rechazada</option></select>
+        </div>
+      </div>
+      <div class="overflow-auto rounded-[2rem] bg-white border border-[#9F2241]/10">
+        <table class="table-soft min-w-full">
+          <thead><tr><th>Folio</th><th>Solicitante</th><th>Identificación</th><th>Giro</th><th>Alcaldía</th><th>Viabilidad</th><th>Estado</th><th>Fecha</th><th>Acciones</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <aside id="drawer" class="drawer">
+    <div class="sticky top-0 bg-[#9F2241] text-white p-5 flex items-center justify-between"><div><p class="text-xs font-black uppercase tracking-[.16em] text-white/60">Detalle</p><h2 id="dTitle" class="text-xl font-black">Solicitud</h2></div><button onclick="cerrarDrawer()" class="h-11 w-11 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"><span class="material-symbols-outlined">close</span></button></div>
+    <div id="dContent" class="p-5 space-y-5"></div>
+  </aside>
+
+  <script>
+    // Gate: solo funcionario SEDECO
+    if (sessionStorage.getItem('radar_role') !== 'sedeco') location.href = 'login.html';
+
+    const SEED = [
+      { folio:'SEDECO-2025-0001', solicitante:'Comercializadora del Centro S.A. de C.V.', identificacion:'RFC: CCE123456ABC', giro:'comercio', alcaldia:'Cuauhtémoc', zona:'Centro Histórico', viabilidad:78, nivel:'Alta', estado:'En revisión', fecha:'2025-05-20', razones:['Competencia moderada en la zona.'], sugerencias:['Verifica compatibilidad de giro.'], faltantes:['Croquis de ubicación'] },
+      { folio:'SEDECO-2025-0002', solicitante:'Juan Rodríguez Hernández', identificacion:'CURP: ROHJ850612HDFDRN01', giro:'manufactura', alcaldia:'Iztapalapa', zona:'Central de Abasto', viabilidad:85, nivel:'Alta', estado:'Recibida', fecha:'2025-05-22', razones:[], sugerencias:[], faltantes:[] },
+      { folio:'SEDECO-2025-0003', solicitante:'Estética Insurgentes', identificacion:'RFC: EIN980101AB1', giro:'estética', alcaldia:'Benito Juárez', zona:'Del Valle', viabilidad:34, nivel:'Baja', estado:'Prevenida', fecha:'2025-05-18', razones:['Uso de suelo restringido (habitacional predominante).','Expediente incompleto.'], sugerencias:['La zona es habitacional: considera reubicar.','Adjunta acta constitutiva.'], faltantes:['Acta constitutiva','Comprobante de domicilio'] }
+    ];
+
+    function cargar(){
+      let lista = JSON.parse(localStorage.getItem('radar_solicitudes') || '[]');
+      if (!lista.length) { lista = SEED; localStorage.setItem('radar_solicitudes', JSON.stringify(lista)); }
+      return lista;
+    }
+    function guardar(lista){ localStorage.setItem('radar_solicitudes', JSON.stringify(lista)); }
+
+    const GIRO = { comercio:'Comercio', manufactura:'Microindustria', 'cafetería':'Cafetería', restaurante:'Restaurante', farmacia:'Farmacia', estética:'Estética', servicios:'Servicios', abarrotes:'Abarrotes' };
+    const ESTADO = { 'Recibida':'bg-blue-50 text-blue-700', 'En revisión':'bg-yellow-50 text-yellow-700', 'Prevenida':'bg-yellow-50 text-yellow-700', 'Aprobada':'bg-green-50 text-green-700', 'Rechazada':'bg-red-50 text-red-700' };
+    const colorV = (v) => v>=75?'#2E7D32':v>=55?'#BC955C':'#C62828';
+
+    function pintarKpis(lista){
+      const k = [
+        { l:'Total', v:lista.length },
+        { l:'En revisión', v:lista.filter(s=>['Recibida','En revisión'].includes(s.estado)).length },
+        { l:'Prevenidas', v:lista.filter(s=>s.estado==='Prevenida').length },
+        { l:'Aprobadas', v:lista.filter(s=>s.estado==='Aprobada').length }
+      ];
+      document.getElementById('kpis').innerHTML = k.map(x=>`<div class="metric-card"><p class="form-label">${x.l}</p><h3 class="text-3xl font-black text-[#9F2241] mt-1">${x.v}</h3></div>`).join('');
+    }
+
+    function pintar(){
+      const lista = cargar();
+      pintarKpis(lista);
+      const q = (document.getElementById('buscar').value || '').toLowerCase();
+      const fe = document.getElementById('filtroEstado').value;
+      const filtradas = lista.filter(s => (!fe || s.estado===fe) && (!q || JSON.stringify(s).toLowerCase().includes(q)));
+      document.getElementById('tbody').innerHTML = filtradas.map(s => `
+        <tr>
+          <td class="font-extrabold text-[#691C32]">${s.folio}</td>
+          <td>${s.solicitante}</td>
+          <td class="text-xs">${s.identificacion||'—'}</td>
+          <td>${GIRO[s.giro]||s.giro}</td>
+          <td>${s.alcaldia}</td>
+          <td><b style="color:${colorV(s.viabilidad)}">${s.viabilidad}</b> <span class="text-[#9F2241]/45">/100</span></td>
+          <td><span class="pill ${ESTADO[s.estado]}">${s.estado}</span></td>
+          <td>${s.fecha}</td>
+          <td>
+            <div class="flex gap-1.5 flex-wrap">
+              <button class="btn-a bg-[#9F2241]/8 text-[#9F2241]" onclick="ver('${s.folio}')"><span class="material-symbols-outlined text-[16px]">visibility</span></button>
+              <button class="btn-a bg-green-600 text-white" onclick="resolver('${s.folio}','Aprobada')">Aprobar</button>
+              <button class="btn-a bg-[#BC955C] text-[#691C32]" onclick="resolver('${s.folio}','Prevenida')">Prevenir</button>
+              <button class="btn-a bg-red-600 text-white" onclick="resolver('${s.folio}','Rechazada')">Rechazar</button>
+            </div>
+          </td>
+        </tr>`).join('') || `<tr><td colspan="9" class="text-center py-10 text-[#9F2241]/50 font-bold">Sin solicitudes que coincidan.</td></tr>`;
+    }
+
+    function resolver(folio, estado){
+      const NOTA = { 'Aprobada':'Aprobada por SEDECO. Continúa tu trámite.', 'Prevenida':'Prevenida: atiende los documentos faltantes y reenvía.', 'Rechazada':'Rechazada por SEDECO. Revisa el diagnóstico.' };
+      const hoy = new Date().toISOString().slice(0,10);
+      const lista = cargar().map(s => s.folio===folio ? { ...s, estado, resolucionNota: NOTA[estado] || '', resuelto: hoy } : s);
+      guardar(lista); pintar();
+    }
+
+    function ver(folio){
+      const s = cargar().find(x => x.folio===folio); if(!s) return;
+      document.getElementById('dTitle').textContent = s.folio;
+      document.getElementById('dContent').innerHTML = `
+        <div class="bg-white rounded-[1.5rem] p-5 border border-[#9F2241]/10">
+          <p class="form-label">Solicitante</p><p class="font-black text-[#691C32]">${s.solicitante}</p>
+          <p class="text-xs font-bold text-[#9F2241]/55 mt-1">${s.identificacion||''}</p>
+          <div class="grid grid-cols-2 gap-3 mt-4">
+            <div><p class="form-label">Giro</p><p class="font-black text-[#691C32]">${GIRO[s.giro]||s.giro}</p></div>
+            <div><p class="form-label">Alcaldía</p><p class="font-black text-[#691C32]">${s.alcaldia}</p></div>
+            <div><p class="form-label">Viabilidad</p><p class="font-black" style="color:${colorV(s.viabilidad)}">${s.viabilidad} · ${s.nivel||''}</p></div>
+            <div><p class="form-label">Estado</p><span class="pill ${ESTADO[s.estado]}">${s.estado}</span></div>
+          </div>
+        </div>
+        ${(s.razones&&s.razones.length)?`<div class="bg-white rounded-[1.5rem] p-5 border border-[#9F2241]/10"><h4 class="font-black text-[#9F2241] flex items-center gap-2 mb-3"><span class="material-symbols-outlined text-red-600 text-[20px]">report</span>Diagnóstico de los agentes</h4><ul class="space-y-2 text-sm font-semibold text-[#691C32]/75">${s.razones.map(r=>`<li class="flex gap-2"><span class="material-symbols-outlined text-red-500 text-[18px]">chevron_right</span>${r}</li>`).join('')}</ul></div>`:''}
+        ${(s.faltantes&&s.faltantes.length)?`<div class="bg-white rounded-[1.5rem] p-5 border border-[#9F2241]/10"><h4 class="font-black text-[#9F2241] mb-3">Documentos faltantes</h4><ul class="space-y-2 text-sm font-semibold text-[#691C32]/75">${s.faltantes.map(f=>`<li class="flex gap-2"><span class="material-symbols-outlined text-[#BC955C] text-[18px]">description</span>${f}</li>`).join('')}</ul></div>`:''}
+        <div class="bg-[#691C32] text-white rounded-[1.5rem] p-5"><p class="text-xs font-black uppercase tracking-[.14em] text-[#BC955C] mb-2">Resolución</p><p class="text-sm text-white/80 font-semibold">La IA propone; la persona servidora pública decide y firma. Usa los botones de la tabla para resolver.</p></div>
+      `;
+      document.getElementById('drawer').classList.add('open');
+    }
+    window.ver = ver; window.resolver = resolver;
+    window.cerrarDrawer = () => document.getElementById('drawer').classList.remove('open');
+    window.pintar = pintar;
+    window.salir = () => { sessionStorage.removeItem('radar_role'); location.href = 'login.html'; };
+    pintar();
+  </script>
+</body>
+</html>

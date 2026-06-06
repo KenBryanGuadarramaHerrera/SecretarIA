@@ -1,0 +1,346 @@
+{
+  "version": "2026-06",
+  "descripcion": "Fuente de verdad: trámites de gobierno para apertura/operación de negocios, por tipo de persona, nivel de gobierno y dependencia.",
+  "tipos_persona": [
+    {
+      "tipo_persona": "Persona Moral (Nacional)",
+      "descripcion": "Aplica tanto si arranca desde cero como si ya existe jurídicamente.",
+      "niveles": [
+        {
+          "nivel": "Federal",
+          "dependencias": [
+            {
+              "dependencia": "Secretaría de Economía (SE)",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Identidad y Existencia Legal",
+                  "tramites": [
+                    {
+                      "nombre": "Autorización de Uso de Denominación o Razón Social",
+                      "descripcion": "Trámite para reservar el nombre de la empresa.",
+                      "constancia": "Resolución favorable de uso de denominación",
+                      "nota": "Si la empresa ya existe, esta información consta en el sistema electrónico \"Tu Empresa\" de la SE y no es necesario revalidarla."
+                    },
+                    {
+                      "nombre": "Inscripción del Acta Constitutiva",
+                      "descripcion": "Protocolización ante Notario/Corredor Público y registro oficial de la creación de la empresa (o actas de asamblea subsecuentes si ya existe).",
+                      "constancia": "Folio Mercantil Electrónico (FME)",
+                      "nota": "Textualmente: La existencia legal de la empresa, su acta constitutiva y representantes legales están centralizados en el Sistema Integral de Gestión Registral (SIGER). Las demás dependencias gubernamentales pueden verificar el estatus y descargar las actas desde este sistema nacional, por lo que jurídicamente no requieren validación en otra secretaría, aunque dependencias desactualizadas aún pidan copia certificada impresa."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "dependencia": "Secretaría de Hacienda y Crédito Público (SHCP) / SAT",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Identificación y Obligaciones Fiscales",
+                  "tramites": [
+                    {
+                      "nombre": "Inscripción al Registro Federal de Contribuyentes (RFC) y Alta de Actividad Económica",
+                      "descripcion": "Registro de la empresa y sus obligaciones de impuestos. Si la empresa ya existe y abre una sucursal, solo requiere un \"Aviso de apertura de establecimiento\".",
+                      "constancia": "Constancia de Situación Fiscal",
+                      "nota": "Textualmente: Este documento cuenta con un código QR y sello digital. Todas las secretarías federales y locales están obligadas por ley a verificar su autenticidad escaneando el QR que enlaza a la base de datos del SAT. No se requiere acudir a Hacienda para que lo validen para otro trámite."
+                    },
+                    {
+                      "nombre": "Obtención de e.firma (Firma Electrónica) de Persona Moral",
+                      "descripcion": "Identidad digital para firmar documentos oficiales.",
+                      "constancia": "Archivos digitales (.cer, .key y contraseña)",
+                      "nota": "Válida universalmente en todos los portales de gobierno."
+                    },
+                    {
+                      "nombre": "Tramitación de Certificado de Sello Digital (CSD)",
+                      "descripcion": "Permiso para emitir facturas electrónicas.",
+                      "constancia": "Acuse de CSD y archivos digitales"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "dependencia": "Instituto Mexicano del Seguro Social (IMSS) e INFONAVIT",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Obligaciones Patronales (Aplica si hay empleados contratados)",
+                  "tramites": [
+                    {
+                      "nombre": "Alta Patronal y de Trabajadores",
+                      "descripcion": "Registro de la empresa como empleador. Si la empresa ya existe en otro estado, solo debe registrar el domicilio del nuevo centro de trabajo para temas de prima de riesgo.",
+                      "constancia": "Aviso de Registro Patronal y Tarjeta de Identificación Patronal (TIP)",
+                      "nota": "Textualmente: Esta información está unificada; el IMSS y el INFONAVIT comparten la misma base de datos patronal a través del sistema IDSE (IMSS Desde Su Empresa), por lo que el alta en uno es suficiente para que el otro sistema lo reconozca."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "dependencia": "Instituto Mexicano de la Propiedad Industrial (IMPI)",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Protección de Propiedad Intelectual",
+                  "tramites": [
+                    {
+                      "nombre": "Registro de Marca, Aviso o Nombre Comercial",
+                      "descripcion": "Protección del uso exclusivo del nombre o logo del negocio (independiente de la razón social).",
+                      "constancia": "Título de Registro de Marca",
+                      "nota": "Textualmente: La titularidad se puede consultar y validar públicamente en cualquier momento a través del portal nacional MARCANET del IMPI."
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "nivel": "Local (Ciudad de México)",
+          "dependencias": [
+            {
+              "dependencia": "Secretaría de Desarrollo Urbano y Vivienda (SEDUVI)",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Viabilidad de Establecimiento",
+                  "tramites": [
+                    {
+                      "nombre": "Expedición del Certificado de Uso de Suelo",
+                      "descripcion": "Validación de que el inmueble físico permite la actividad comercial o giro específico del negocio.",
+                      "constancia": "Certificado Único de Zonificación de Uso de Suelo (CUZUS) o por Derechos Adquiridos",
+                      "nota": "Textualmente: Este certificado se emite de forma digital. La propia SEDUVI centraliza el registro urbano, y las Alcaldías verifican la legalidad del documento a través de su código QR y el portal de la secretaría. Es el \"trámite llave\", si este no está hecho o es negativo, el resto del gobierno local bloqueará los trámites siguientes."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "dependencia": "Secretaría de Desarrollo Económico (SEDECO) / Alcaldías",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Autorización de Apertura y Operación",
+                  "tramites": [
+                    {
+                      "nombre": "Aviso o Permiso de Establecimiento Mercantil",
+                      "descripcion": "Registro del inicio de operaciones del local.",
+                      "constancia": "Acuse de Aviso de Funcionamiento (Giros de Bajo Impacto) o Permiso de Operación (Impacto Vecinal/Zonal)",
+                      "nota": "Textualmente: Se gestiona mediante el SIAPEM (Sistema Electrónico de Avisos y Permisos de Establecimientos Mercantiles). Al hacerlo en este sistema del gobierno central, la información se envía automáticamente a la Alcaldía correspondiente para sus padrones de inspección, sin necesidad de ir a validar el papel presencialmente."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "dependencia": "Secretaría de Administración y Finanzas de la CDMX (SAF)",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Contribuciones Locales (Aplica si hay empleados en la CDMX)",
+                  "tramites": [
+                    {
+                      "nombre": "Alta en el Impuesto Sobre Nóminas (ISN)",
+                      "descripcion": "Padrón para pagar el impuesto estatal sobre los salarios emitidos en la ciudad (3%).",
+                      "constancia": "Acuse de Inscripción en el Sistema de Administración de Contribuciones (SIAF)"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "dependencia": "Secretaría de Gestión Integral de Riesgos y Protección Civil / Alcaldía",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Seguridad de Instalaciones",
+                  "tramites": [
+                    {
+                      "nombre": "Visto Bueno de Seguridad y Operación",
+                      "descripcion": "Dictamen sobre la seguridad estructural del inmueble.",
+                      "constancia": "Acuse de Visto Bueno (emitido por un Director Responsable de Obra - DRO)"
+                    },
+                    {
+                      "nombre": "Registro del Programa Interno de Protección Civil",
+                      "descripcion": "Obligatorio para locales mayores a 250 m², de alto riesgo, o con aforo mayor a 50 personas.",
+                      "constancia": "Oficio de Aprobación del Programa Interno",
+                      "nota": "Se ingresa en la Alcaldía, pero es dictaminado según los lineamientos de la Secretaría a nivel local."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "dependencia": "Secretaría del Medio Ambiente (SEDEMA CDMX)",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Regulación Ambiental (Solo si el giro genera impactos específicos: emisiones, ruido excesivo, descarga de grasas)",
+                  "tramites": [
+                    {
+                      "nombre": "Licencia Ambiental Única (LAU-CDMX) o Aviso de Ingreso",
+                      "descripcion": "Autorización en materia de impacto ambiental.",
+                      "constancia": "Resolución o Acuse de la LAU-CDMX"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "tipo_persona": "Persona Física",
+      "descripcion": "Un individuo emprendiendo por su cuenta, tanto si arranca desde cero como si el negocio ya operaba previamente.",
+      "nota": "A diferencia de la Persona Moral, aquí se omite la Secretaría de Economía y el Registro Público de Comercio, ya que no se requiere Acta Constitutiva ni autorización de nombre oficial; legalmente actúas bajo tu propio nombre y apellidos.",
+      "niveles": [
+        {
+          "nivel": "Federal",
+          "dependencias": [
+            {
+              "dependencia": "Secretaría de Hacienda y Crédito Público (SHCP) / SAT",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Identificación y Obligaciones Fiscales",
+                  "tramites": [
+                    {
+                      "nombre": "Inscripción al RFC o Actualización de Actividades Económicas",
+                      "descripcion": "Si empiezas de cero y no tienes RFC, te inscribes. Si ya tienes RFC (por ejemplo, como asalariado) o el negocio ya existía y vas a abrir otra sucursal, presentas un \"Aviso de actualización de actividades económicas y obligaciones\" (ej. cambiar a Régimen Simplificado de Confianza - RESICO o Actividad Empresarial) o un \"Aviso de apertura de establecimiento\".",
+                      "constancia": "Constancia de Situación Fiscal",
+                      "nota": "Textualmente: Este documento cuenta con un código QR y sello digital. Todas las secretarías federales y locales están obligadas por ley a verificar su autenticidad escaneando el QR que enlaza a la base de datos del SAT. No se requiere acudir a Hacienda para que lo validen para otro trámite."
+                    },
+                    {
+                      "nombre": "Obtención o Renovación de e.firma (Firma Electrónica) de Persona Física",
+                      "descripcion": "Identidad digital obligatoria para firmar documentos oficiales.",
+                      "constancia": "Archivos digitales (.cer, .key y contraseña)",
+                      "nota": "Válida universalmente en todos los portales de gobierno."
+                    },
+                    {
+                      "nombre": "Tramitación de Certificado de Sello Digital (CSD)",
+                      "descripcion": "Permiso necesario para emitir facturas electrónicas a tus clientes.",
+                      "constancia": "Acuse de CSD y archivos digitales"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "dependencia": "Instituto Mexicano del Seguro Social (IMSS) e INFONAVIT",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Obligaciones Patronales (Aplica estrictamente si contratas empleados)",
+                  "tramites": [
+                    {
+                      "nombre": "Alta Patronal de Persona Física y Registro de Trabajadores",
+                      "descripcion": "Registro como empleador. Funciona igual si es tu primer local o una sucursal nueva.",
+                      "constancia": "Aviso de Registro Patronal y Tarjeta de Identificación Patronal (TIP)",
+                      "nota": "Textualmente: Esta información está unificada; el IMSS y el INFONAVIT comparten la misma base de datos patronal a través del sistema IDSE (IMSS Desde Su Empresa), por lo que el alta en uno es suficiente para que el otro sistema lo reconozca."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "dependencia": "Instituto Mexicano de la Propiedad Industrial (IMPI)",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Protección de Propiedad Intelectual",
+                  "tramites": [
+                    {
+                      "nombre": "Registro de Marca o Nombre Comercial",
+                      "descripcion": "Como legalmente facturas y operas bajo tu nombre propio (ej. Juan Pérez), proteger el nombre comercial público de tu negocio (ej. \"Taquería El Buen Pastor\") es fundamental para que nadie más lo use.",
+                      "constancia": "Título de Registro de Marca",
+                      "nota": "Textualmente: La titularidad se puede consultar y validar públicamente en cualquier momento a través del portal nacional MARCANET del IMPI."
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "nivel": "Local (Ciudad de México)",
+          "nota": "Al ser trámites atados al espacio físico (el local), los requisitos locales son idénticos a los de una Persona Moral.",
+          "dependencias": [
+            {
+              "dependencia": "Secretaría de Desarrollo Urbano y Vivienda (SEDUVI)",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Viabilidad de Establecimiento",
+                  "tramites": [
+                    {
+                      "nombre": "Expedición del Certificado de Uso de Suelo",
+                      "descripcion": "Validación de que el inmueble físico permite la actividad comercial o giro específico del negocio.",
+                      "constancia": "Certificado Único de Zonificación de Uso de Suelo (CUZUS) o por Derechos Adquiridos",
+                      "nota": "Textualmente: Este certificado se emite de forma digital. La propia SEDUVI centraliza el registro urbano, y las Alcaldías verifican la legalidad del documento a través de su código QR y el portal de la secretaría. Es el \"trámite llave\", si este no está hecho o es negativo, el resto del gobierno local bloqueará los trámites siguientes."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "dependencia": "Secretaría de Desarrollo Económico (SEDECO) / Alcaldías",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Autorización de Apertura y Operación",
+                  "tramites": [
+                    {
+                      "nombre": "Aviso o Permiso de Establecimiento Mercantil",
+                      "descripcion": "Registro del inicio de operaciones del local.",
+                      "constancia": "Acuse de Aviso de Funcionamiento (Giros de Bajo Impacto) o Permiso de Operación (Impacto Vecinal/Zonal)",
+                      "nota": "Textualmente: Se gestiona mediante el SIAPEM (Sistema Electrónico de Avisos y Permisos de Establecimientos Mercantiles). Al hacerlo en este sistema del gobierno central, la información se envía automáticamente a la Alcaldía correspondiente para sus padrones de inspección, sin necesidad de ir a validar el papel presencialmente."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "dependencia": "Secretaría de Administración y Finanzas de la CDMX (SAF)",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Contribuciones Locales (Aplica si hay empleados en la CDMX)",
+                  "tramites": [
+                    {
+                      "nombre": "Alta en el Impuesto Sobre Nóminas (ISN)",
+                      "descripcion": "Padrón para pagar el impuesto estatal sobre los salarios emitidos en la ciudad (3%).",
+                      "constancia": "Acuse de Inscripción en el Sistema de Administración de Contribuciones (SIAF)"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "dependencia": "Secretaría de Gestión Integral de Riesgos y Protección Civil / Alcaldía",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Seguridad de Instalaciones",
+                  "tramites": [
+                    {
+                      "nombre": "Visto Bueno de Seguridad y Operación",
+                      "descripcion": "Dictamen sobre la seguridad estructural del inmueble.",
+                      "constancia": "Acuse de Visto Bueno (emitido por un Director Responsable de Obra - DRO)"
+                    },
+                    {
+                      "nombre": "Registro del Programa Interno de Protección Civil",
+                      "descripcion": "Obligatorio para locales mayores a 250 m², de alto riesgo, o con aforo mayor a 50 personas.",
+                      "constancia": "Oficio de Aprobación del Programa Interno",
+                      "nota": "Se ingresa en la Alcaldía, pero es dictaminado según los lineamientos de la Secretaría a nivel local."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "dependencia": "Secretaría del Medio Ambiente (SEDEMA CDMX)",
+              "procesos": [
+                {
+                  "proceso": "Proceso de Regulación Ambiental (Solo si el giro genera impactos específicos: emisiones, ruido excesivo, descarga de grasas)",
+                  "tramites": [
+                    {
+                      "nombre": "Licencia Ambiental Única (LAU-CDMX) o Aviso de Ingreso",
+                      "descripcion": "Autorización en materia de impacto ambiental.",
+                      "constancia": "Resolución o Acuse de la LAU-CDMX"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "version": "2026-06",
+  "descripcion": "Fuente de verdad: giros con restriccion de distancia numerica a un lugar concreto. Distancia en metros (radio minimo de separacion). Cuando un giro tiene varias distancias, el sistema debe usar el MAXIMO.",
+  "giros": [
+    {
+      "giro": "bar",
+      "restricciones_distancia": [
+        {
+          "lugar": "escuela",
+          "distancia_m": 300
+        }
+      ]
+    },
+    {
+      "giro": "cantina",
+      "restricciones_distancia": [
+        {
+          "lugar": "escuela",
+          "distancia_m": 300
+        }
+      ]
+    },
+    {
+      "giro": "antro",
+      "restricciones_distancia": [
+        {
+          "lugar": "escuela",
+          "distancia_m": 300
+        }
+      ]
+    },
+    {
+      "giro": "discoteca",
+      "restricciones_distancia": [
+        {
+          "lugar": "escuela",
+          "distancia_m": 300
+        }
+      ]
+    },
+    {
+      "giro": "cabaret",
+      "restricciones_distancia": [
+        {
+          "lugar": "escuela",
+          "distancia_m": 300
+        }
+      ]
+    },
+    {
+      "giro": "cervecería",
+      "restricciones_distancia": [
+        {
+          "lugar": "escuela",
+          "distancia_m": 300
+        }
+      ]
+    },
+    {
+      "giro": "chelería",
+      "restricciones_distancia": [
+        {
+          "lugar": "escuela",
+          "distancia_m": 300
+        }
+      ]
+    },
+    {
+      "giro": "peña",
+      "restricciones_distancia": [
+        {
+          "lugar": "escuela",
+          "distancia_m": 300
+        }
+      ]
+    },
+    {
+      "giro": "espacio de diversión nocturno",
+      "restricciones_distancia": [
+        {
+          "lugar": "escuela",
+          "distancia_m": 300
+        }
+      ]
+    },
+    {
+      "giro": "centro de entretenimiento para adultos / bailes eróticos",
+      "restricciones_distancia": [
+        {
+          "lugar": "escuela",
+          "distancia_m": 300
+        }
+      ]
+    },
+    {
+      "giro": "estadio",
+      "restricciones_distancia": [
+        {
+          "lugar": "escuela",
+          "distancia_m": 300
+        }
+      ]
+    },
+    {
+      "giro": "casino",
+      "restricciones_distancia": [
+        {
+          "lugar": "escuela",
+          "distancia_m": 300
+        },
+        {
+          "lugar": "templo",
+          "distancia_m": 200
+        }
+      ]
+    }
+  ]
+}

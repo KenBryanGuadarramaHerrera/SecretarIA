@@ -1,0 +1,332 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Reglas de Negocio para Apertura de Establecimientos en CDMX",
+  "description": "Esquema jerárquico unificado que modela los requisitos obligatorios y dinámicos para Personas Físicas y Morales a nivel Federal y Local.",
+  "metadata": {
+    "version": "2.1.0",
+    "updated_at": "2026-06-06T14:14:00-06:00",
+    "jurisdiction": "México (Federal) y CDMX (Local)"
+  },
+  "reglas_base": [
+    {
+      "id": "RB-001",
+      "condicion": {
+        "variable": "tipo_persona",
+        "operador": "EQUALS",
+        "valor": "Persona Física"
+      },
+      "descripcion": "Requisitos base de nivel Federal obligatorios para todas las Personas Físicas.",
+      "documentos_requeridos": [
+        {
+          "id": "DOC-PHYS-FED-001",
+          "nombre": "Inscripción al RFC o Actualización de Actividades Económicas",
+          "institucion": "SAT",
+          "ambito_gobierno": "Federal",
+          "tipo_archivo_esperado": "PDF",
+          "detalles": "Si empieza de cero se inscribe. Si ya tiene RFC o negocio previo, presenta un Aviso de actualización de actividades o de apertura de establecimiento.",
+          "restricciones": {
+            "validacion_automatica": "Código QR / Sello Digital verificable en línea sin validación física."
+          }
+        },
+        {
+          "id": "DOC-PHYS-FED-002",
+          "nombre": "e.firma vigente de Persona Física",
+          "institucion": "SAT",
+          "ambito_gobierno": "Federal",
+          "tipo_archivo_esperado": "Archivos Digitales (.cer, .key y contraseña)",
+          "detalles": "Identidad digital obligatoria válida universalmente en portales gubernamentales."
+        },
+        {
+          "id": "DOC-PHYS-FED-003",
+          "nombre": "Certificado de Sello Digital (CSD)",
+          "institucion": "SAT",
+          "ambito_gobierno": "Federal",
+          "tipo_archivo_esperado": "Archivos Digitales (.cer, .key)",
+          "detalles": "Indispensable para emitir facturaciones electrónicas a clientes."
+        },
+        {
+          "id": "DOC-PHYS-FED-004",
+          "nombre": "Alta Patronal y Registro de Trabajadores (Física)",
+          "institucion": "IMSS e INFONAVIT",
+          "ambito_gobierno": "Federal",
+          "tipo_archivo_esperado": "PDF (TIP y Aviso de Registro)",
+          "condicional_especifica": {
+            "variable": "tiene_empleados",
+            "operador": "EQUALS",
+            "valor": true,
+            "descripcion": "Aplica estrictamente si se contratan o tienen empleados en nómina."
+          },
+          "detalles": "Bases de datos unificadas a través del sistema IDSE."
+        },
+        {
+          "id": "DOC-PHYS-FED-005",
+          "nombre": "Registro de Marca o Nombre Comercial",
+          "institucion": "IMPI",
+          "ambito_gobierno": "Federal",
+          "tipo_archivo_esperado": "PDF (Título de Registro)",
+          "condicional_especifica": {
+            "variable": "requiere_marca",
+            "operador": "EQUALS",
+            "valor": true,
+            "descripcion": "Recomendado para proteger el nombre comercial dado que opera bajo su nombre propio."
+          },
+          "detalles": "La consulta de titularidad y disponibilidad se puede validar en línea a través del portal MARCia (IA) o MarcaNet del IMPI."
+        }
+      ]
+    },
+    {
+      "id": "RB-002",
+      "condicion": {
+        "variable": "tipo_persona",
+        "operador": "EQUALS",
+        "valor": "Persona Moral"
+      },
+      "descripcion": "Requisitos base de nivel Federal obligatorios para todas las Personas Morales (Nacionales).",
+      "documentos_requeridos": [
+        {
+          "id": "DOC-CORP-FED-001",
+          "nombre": "Autorización de Uso de Denominación o Razón Social",
+          "institucion": "Secretaría de Economía (SE)",
+          "ambito_gobierno": "Federal",
+          "tipo_archivo_esperado": "PDF",
+          "condicional_especifica": {
+            "variable": "estatus_empresa",
+            "operador": "EQUALS",
+            "valor": "nueva",
+            "descripcion": "Requerido si la empresa arranca desde cero. Si ya existe, se omite por constar en el portal 'Tu Empresa'."
+          }
+        },
+        {
+          "id": "DOC-CORP-FED-002",
+          "nombre": "Inscripción del Acta Constitutiva (o Actas de Asamblea subsecuentes)",
+          "institucion": "Secretaría de Economía (SE) / SIGER",
+          "ambito_gobierno": "Federal",
+          "tipo_archivo_esperado": "PDF (Folio Mercantil Electrónico)",
+          "detalles": "La existencia legal está centralizada en el SIGER. Verificable digitalmente por otras dependencias sin requerir validación notarial física."
+        },
+        {
+          "id": "DOC-CORP-FED-003",
+          "nombre": "Inscripción al RFC y Alta de Actividad Económica (Moral)",
+          "institucion": "SAT",
+          "ambito_gobierno": "Federal",
+          "tipo_archivo_esperado": "PDF (Constancia de Situación Fiscal)",
+          "condicional_especifica": {
+            "variable": "estatus_empresa",
+            "operador": "EQUALS",
+            "valor": "nueva",
+            "descripcion": "Registro inicial de la empresa y obligaciones de impuestos."
+          }
+        },
+        {
+          "id": "DOC-CORP-FED-004",
+          "nombre": "Aviso de apertura de establecimiento (Sucursal)",
+          "institucion": "SAT",
+          "ambito_gobierno": "Federal",
+          "tipo_archivo_esperado": "PDF (Constancia con actualización)",
+          "condicional_especifica": {
+            "variable": "estatus_empresa",
+            "operador": "EQUALS",
+            "valor": "existente",
+            "descripcion": "Requerido si la empresa ya existe jurídicamente y apertura una nueva sucursal."
+          }
+        },
+        {
+          "id": "DOC-CORP-FED-005",
+          "nombre": "e.firma de Persona Moral",
+          "institucion": "SAT",
+          "ambito_gobierno": "Federal",
+          "tipo_archivo_esperado": "Archivos Digitales (.cer, .key y contraseña)",
+          "detalles": "Firma e identidad digital corporativa con validez universal."
+        },
+        {
+          "id": "DOC-CORP-FED-006",
+          "nombre": "Certificado de Sello Digital (CSD) de Persona Moral",
+          "institucion": "SAT",
+          "ambito_gobierno": "Federal",
+          "tipo_archivo_esperado": "Archivos Digitales (.cer, .key)",
+          "detalles": "Habilita la emisión de facturación electrónica corporativa."
+        },
+        {
+          "id": "DOC-CORP-FED-007",
+          "nombre": "Alta Patronal e Inscripción de Trabajadores (Moral)",
+          "institucion": "IMSS e INFONAVIT",
+          "ambito_gobierno": "Federal",
+          "tipo_archivo_esperado": "PDF (TIP y Aviso de Registro)",
+          "condicional_especifica": {
+            "variable": "tiene_empleados",
+            "operador": "EQUALS",
+            "valor": true,
+            "descripcion": "Aplica si hay empleados contratados. Si ya existe en otro estado, solo se registra el domicilio del nuevo centro."
+          },
+          "detalles": "Bases de datos compartidas mediante la plataforma IDSE."
+        },
+        {
+          "id": "DOC-CORP-FED-008",
+          "nombre": "Registro de Marca, Aviso o Nombre Comercial",
+          "institucion": "IMPI",
+          "ambito_gobierno": "Federal",
+          "tipo_archivo_esperado": "PDF (Título de Registro)",
+          "condicional_especifica": {
+            "variable": "requiere_marca",
+            "operador": "EQUALS",
+            "valor": true,
+            "descripcion": "Protección de uso exclusivo de logo o nombre de negocio independiente a la razón social. Consulta vía MARCia o MarcaNet."
+          }
+        }
+      ]
+    },
+    {
+      "id": "RB-003",
+      "condicion": {
+        "variable": "operacion_local_fisico_cdmx",
+        "operador": "EQUALS",
+        "valor": true
+      },
+      "descripcion": "Requisitos obligatorios a nivel Local (CDMX) ligados al inmueble físico, aplicables por igual a Personas Físicas y Morales.",
+      "documentos_requeridos": [
+        {
+          "id": "DOC-LOCAL-CDMX-001",
+          "nombre": "Certificado Único de Zonificación de Uso de Suelo (CUZUS) o por Derechos Adquiridos",
+          "institucion": "SEDUVI",
+          "ambito_gobierno": "Local (CDMX)",
+          "tipo_archivo_esperado": "PDF",
+          "detalles": "Trámite llave emitido digitalmente. Si no está aprobado o emitido, se bloquean el resto de trámites ante la alcaldía."
+        },
+        {
+          "id": "DOC-LOCAL-CDMX-002",
+          "nombre": "Alta en el Impuesto Sobre Nóminas (ISN)",
+          "institucion": "Secretaría de Administración y Finanzas (SAF)",
+          "ambito_gobierno": "Local (CDMX)",
+          "tipo_archivo_esperado": "PDF (Acuse de Inscripción en SIAF)",
+          "condicional_especifica": {
+            "variable": "tiene_empleados",
+            "operador": "EQUALS",
+            "valor": true,
+            "descripcion": "Aplica si existen salarios devengados y pagados en la CDMX. Tasa general del 4%."
+          }
+        },
+        {
+          "id": "DOC-LOCAL-CDMX-003",
+          "nombre": "Visto Bueno de Seguridad y Operación",
+          "institucion": "Secretaría de Gestión Integral de Riesgos y Protección Civil / Alcaldía",
+          "ambito_gobierno": "Local (CDMX)",
+          "tipo_archivo_esperado": "PDF (Dictamen firmado por DRO)",
+          "detalles": "Dictamen de seguridad estructural del inmueble avalado por un Director Responsable de Obra."
+        },
+        {
+          "id": "DOC-LOCAL-CDMX-004",
+          "nombre": "Registro del Programa Interno de Protección Civil",
+          "institucion": "Secretaría de Gestión Integral de Riesgos y Protección Civil",
+          "ambito_gobierno": "Local (CDMX)",
+          "tipo_archivo_esperado": "PDF (Oficio de Aprobación)",
+          "condicional_especifica": {
+            "variable": "requiere_programa_pc",
+            "operador": "EQUALS",
+            "valor": true,
+            "descripcion": "Obligatorio si la superficie supera los 250 m², es de alto riesgo (manejo de fuego/químicos) o tiene un aforo superior a 100 personas."
+          }
+        },
+        {
+          "id": "DOC-LOCAL-CDMX-005",
+          "nombre": "Licencia Ambiental Única (LAU-CDMX) o Aviso de Ingreso",
+          "institucion": "Secretaría del Medio Ambiente (SEDEMA CDMX)",
+          "ambito_gobierno": "Local (CDMX)",
+          "tipo_archivo_esperado": "PDF (Resolución o Acuse)",
+          "condicional_especifica": {
+            "variable": "giro_genera_impactos",
+            "operador": "EQUALS",
+            "valor": true,
+            "descripcion": "Requerido si el giro genera impactos específicos (emisiones a la atmósfera, ruido excedente, descargas de grasas como talleres o restaurantes)."
+          }
+        }
+      ]
+    }
+  ],
+  "reglas_dinamicas_por_giro": {
+    "variable_disparadora": "giro_negocio",
+    "giros": {
+      "bajo_impacto": {
+        "nombre": "Bajo Impacto",
+        "ejemplos": ["Cafetería", "Oficina", "Tienda de Abarrotes"],
+        "documentos_requeridos": [
+          {
+            "id": "DOC-GIRO-BI-001",
+            "nombre": "Acuse de Aviso de Funcionamiento Mercantil (Bajo Impacto)",
+            "institucion": "SEDECO / Alcaldía",
+            "ambito_gobierno": "Local (CDMX)",
+            "tipo_archivo_esperado": "PDF",
+            "detalles": "Gestionado vía digital mediante el SIAPEM. Se notifica automáticamente a la alcaldía para inspección."
+          },
+          {
+            "id": "DOC-GIRO-BI-002",
+            "nombre": "Carta Responsiva de Protección Civil",
+            "institucion": "Alcaldía correspondiente",
+            "ambito_gobierno": "Local (CDMX)",
+            "tipo_archivo_esperado": "PDF",
+            "condicional_especifica": {
+              "variable": "superficie_m2",
+              "operador": "LESS_THAN",
+              "valor": 100,
+              "descripcion": "Requerido si el local físico tiene una superficie inferior a 100 m²."
+            }
+          }
+        ]
+      },
+      "impacto_vecinal": {
+        "nombre": "Impacto Vecinal",
+        "ejemplos": ["Bar", "Restaurante con venta de bebidas alcohólicas", "Salón de fiestas"],
+        "documentos_requeridos": [
+          {
+            "id": "DOC-GIRO-IV-001",
+            "nombre": "Permiso de Operación para Establecimientos de Impacto Vecinal",
+            "institucion": "SEDECO / Alcaldía",
+            "ambito_gobierno": "Local (CDMX)",
+            "tipo_archivo_esperado": "PDF",
+            "detalles": "Gestionado vía digital a través del SIAPEM."
+          },
+          {
+            "id": "DOC-GIRO-IV-002",
+            "nombre": "Póliza de Seguro de Responsabilidad Civil",
+            "institucion": "Aseguradora Privada (Validado por Alcaldía)",
+            "ambito_gobierno": "Local (CDMX)",
+            "tipo_archivo_esperado": "PDF"
+          }
+        ]
+      },
+      "salud_o_sanitario": {
+        "nombre": "Salud o Sanitario",
+        "ejemplos": ["Farmacia", "Consultorio Médico", "Clínica"],
+        "documentos_requeridos": [
+          {
+            "id": "DOC-GIRO-SS-001",
+            "nombre": "Aviso de Funcionamiento Mercantil",
+            "institucion": "SEDECO / SIAPEM",
+            "ambito_gobierno": "Local (CDMX)",
+            "tipo_archivo_esperado": "PDF"
+          },
+          {
+            "id": "DOC-GIRO-SS-002",
+            "nombre": "Aviso de Funcionamiento Sanitario",
+            "institucion": "COFEPRIS / AGEPSA",
+            "ambito_gobierno": "Local (CDMX)",
+            "tipo_archivo_esperado": "PDF"
+          },
+          {
+            "id": "DOC-GIRO-SS-003",
+            "nombre": "Aviso de Responsable Sanitario",
+            "institucion": "COFEPRIS / AGEPSA",
+            "ambito_gobierno": "Local (CDMX)",
+            "tipo_archivo_esperado": "PDF"
+          },
+          {
+            "id": "DOC-GIRO-SS-004",
+            "nombre": "Título y Cédula Profesional del Médico Responsable",
+            "institucion": "SEP / Validado por COFEPRIS",
+            "ambito_gobierno": "Federal / Local",
+            "tipo_archivo_esperado": "PDF"
+          }
+        ]
+      }
+    }
+  }
+}
