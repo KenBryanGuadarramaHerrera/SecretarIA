@@ -1,0 +1,11 @@
+{
+    "folio": "FOND-2024-00123",
+    "rfc": "GOMA9001014V6",
+    "curp": "GOMA900101HDFRRA00",
+    "nombre": "Ana Gomez Martinez",
+    "score_ml": 0.88,
+    "datos_geograficos": {
+        "alcaldia": "Iztapalapa",
+        "marginacion": "Alta"
+    }
+}
