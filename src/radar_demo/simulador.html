@@ -7,6 +7,8 @@
   <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>tailwind.config={theme:{extend:{colors:{cdmx:{primary:'#9F2241',secondary:'#691C32',gold:'#BC955C',bg:'#F6F1EB'}},fontFamily:{sans:['Plus Jakarta Sans','sans-serif']}}}};</script>
   <style>
     :root{--cdmx-primary:#9F2241;--cdmx-secondary:#691C32;--cdmx-gold:#BC955C;--cdmx-bg:#F6F1EB;}
@@ -29,6 +31,59 @@
     .btn-cta{background:#9F2241;color:#fff;border-radius:1rem;padding:.9rem 1.3rem;font-weight:900;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;cursor:pointer;border:none}
     .btn-cta:hover{filter:brightness(1.05)}
     .btn-ghost{background:rgba(159,34,65,.08);color:#9F2241;border-radius:1rem;padding:.7rem 1.1rem;font-weight:900;display:inline-flex;align-items:center;gap:.45rem;text-decoration:none}
+
+    .section-title{display:flex;align-items:center;gap:.65rem;color:#9F2241;font-weight:900;font-size:1.05rem;margin-bottom:.85rem}
+    .section-sub{font-size:.82rem;font-weight:700;color:rgba(105,28,50,.62);margin-top:-.35rem;margin-bottom:1rem}
+    .topic-card{background:#fff;border:1px solid rgba(159,34,65,.10);border-radius:1.35rem;padding:1.05rem;box-shadow:0 10px 30px rgba(105,28,50,.045)}
+    .topic-card h4{font-weight:900;color:#9F2241;display:flex;align-items:center;gap:.45rem;margin-bottom:.35rem}
+    .topic-card p,.topic-card li{font-size:.84rem;font-weight:650;color:rgba(105,28,50,.78)}
+    #territorialMap{height:430px;border-radius:1.5rem;border:1px solid rgba(159,34,65,.14);overflow:hidden;z-index:1;background:#F6F1EB}
+    .map-legend{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.75rem}
+    .legend-item{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:900;color:rgba(105,28,50,.72);background:rgba(159,34,65,.06);border-radius:999px;padding:.35rem .65rem}
+    .dot{width:.65rem;height:.65rem;border-radius:999px;display:inline-block}
+    .stepper{counter-reset:step;display:grid;gap:.7rem}
+    .step{position:relative;border:1px solid rgba(159,34,65,.12);border-radius:1rem;padding:.85rem .95rem .85rem 3rem;background:linear-gradient(180deg,#fff,rgba(246,241,235,.35))}
+    .step:before{counter-increment:step;content:counter(step);position:absolute;left:.85rem;top:.82rem;width:1.45rem;height:1.45rem;border-radius:999px;background:#9F2241;color:#fff;font-size:.78rem;font-weight:900;display:grid;place-items:center}
+    .step b{color:#691C32}.step span{display:block;font-size:.77rem;font-weight:700;color:rgba(105,28,50,.62);margin-top:.15rem}
+    .agent-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem}
+    .agent-mini{border-radius:1.1rem;border:1px solid rgba(159,34,65,.10);padding:.85rem;background:#fff}
+    .agent-mini .bar{height:8px;border-radius:99px;background:#eee;overflow:hidden;margin-top:.55rem}.agent-mini .bar i{display:block;height:100%;border-radius:99px}
+    .denue-list{max-height:250px;overflow:auto;border:1px solid rgba(159,34,65,.10);border-radius:1rem}
+    .denue-row{display:flex;justify-content:space-between;gap:1rem;padding:.75rem .9rem;border-bottom:1px solid rgba(159,34,65,.08);font-size:.8rem;font-weight:700;color:rgba(105,28,50,.78)}
+    .denue-row:last-child{border-bottom:0}.denue-row b{color:#691C32}.leaflet-popup-content-wrapper{border-radius:14px}.leaflet-popup-content{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;color:#691C32}
+
+    .doc-card{background:#fff;border:1px solid rgba(159,34,65,.12);border-radius:1.1rem;padding:.85rem;display:grid;gap:.55rem}
+    .doc-card.ok{border-color:rgba(46,125,50,.35);background:rgba(46,125,50,.045)}
+    .doc-card.warn{border-color:rgba(188,149,92,.45);background:rgba(188,149,92,.06)}
+    .doc-card.bad{border-color:rgba(198,40,40,.32);background:rgba(198,40,40,.045)}
+    .doc-head{display:flex;align-items:flex-start;gap:.55rem;font-weight:900;color:#691C32;font-size:.82rem}
+    .doc-head input{accent-color:#9F2241;margin-top:.15rem}
+    .doc-tools{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center}
+    .doc-file{font-size:.72rem;font-weight:800;color:#691C32;max-width:100%}
+    .doc-status{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;padding:.28rem .55rem;font-size:.68rem;font-weight:900}
+    .doc-btn{border:0;background:rgba(159,34,65,.08);color:#9F2241;border-radius:.75rem;padding:.42rem .65rem;font-size:.72rem;font-weight:900;cursor:pointer}
+    .doc-btn:hover{background:rgba(159,34,65,.14)}
+    .file-hidden{position:absolute;opacity:0;width:.1px;height:.1px;overflow:hidden}
+    .doc-progress{height:.45rem;background:#eee;border-radius:999px;overflow:hidden}
+    .doc-progress i{height:100%;display:block;border-radius:999px}
+    .doc-table{border:1px solid rgba(159,34,65,.10);border-radius:1.2rem;overflow:hidden}
+    .doc-line{display:grid;grid-template-columns:1.2fr .85fr .8fr;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid rgba(159,34,65,.08);align-items:center}
+    .doc-line:last-child{border-bottom:0}
+
+    .radius-panel{border:1px solid rgba(159,34,65,.12);background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(255,255,255,.72));border-radius:1.35rem;padding:1rem;box-shadow:0 10px 30px rgba(105,28,50,.045)}
+    .range-row{display:grid;grid-template-columns:1fr 90px;gap:.75rem;align-items:end}
+    .range-input{width:100%;accent-color:#9F2241;cursor:pointer}
+    .preset-chip{border:1px solid rgba(159,34,65,.16);background:#fff;color:#9F2241;border-radius:999px;padding:.42rem .7rem;font-size:.72rem;font-weight:900;cursor:pointer;transition:.18s}
+    .preset-chip:hover,.preset-chip.active{background:#9F2241;color:#fff;border-color:#9F2241}
+    .endpoint-box{display:block;background:#F6F1EB;border:1px solid rgba(159,34,65,.10);border-radius:1rem;padding:.65rem .75rem;color:#691C32;font-size:.68rem;font-weight:800;line-height:1.3;word-break:break-all}
+    .mini-help{font-size:.72rem;font-weight:800;color:rgba(159,34,65,.55)}
+    .ux-banner{display:flex;align-items:flex-start;gap:.75rem;border:1px solid rgba(188,149,92,.25);background:rgba(188,149,92,.08);border-radius:1.2rem;padding:.85rem;color:#691C32}
+    .ux-banner .material-symbols-outlined{color:#BC955C}.ux-banner b{color:#9F2241}
+    .map-toolbar{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:.75rem}
+    .map-tool{border:0;background:rgba(159,34,65,.08);color:#9F2241;border-radius:.85rem;padding:.55rem .7rem;font-size:.72rem;font-weight:900;display:inline-flex;align-items:center;gap:.32rem;cursor:pointer}
+    .map-tool:hover{background:rgba(159,34,65,.15)}
+    .map-live-note{border-radius:1rem;background:rgba(46,125,50,.08);border:1px solid rgba(46,125,50,.18);padding:.65rem .8rem;color:#2E7D32;font-size:.72rem;font-weight:900}
+    @media(max-width:760px){.doc-line{grid-template-columns:1fr}.range-row{grid-template-columns:1fr}}
   </style>
 </head>
 <body class="antialiased min-h-screen soft-grid">
@@ -59,11 +114,36 @@
           <label class="block"><span class="form-label">Alcaldía</span><select id="fAlcaldia" class="form-select"></select></label>
           <label class="block"><span class="form-label">Colonia / zona</span><select id="fZona" class="form-select"></select></label>
         </div>
+        <div class="ux-banner">
+          <span class="material-symbols-outlined">location_on</span>
+          <p class="text-xs font-extrabold leading-relaxed"><b>Centro de análisis:</b> <span id="zonePreview">Selecciona una zona para ver coordenadas.</span></p>
+        </div>
 
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 gap-3">
           <label class="block"><span class="form-label">Superficie m²</span><input id="fSuperficie" type="number" min="0" value="60" class="form-input" /></label>
           <label class="block"><span class="form-label">Aforo</span><input id="fAforo" type="number" min="0" value="20" class="form-input" /></label>
-          <label class="block"><span class="form-label">Radio m</span><input id="fRadio" type="number" min="200" step="100" value="1500" class="form-input" /></label>
+        </div>
+
+        <div class="radius-panel">
+          <div class="range-row">
+            <label class="block">
+              <span class="form-label">Radio de análisis: <b id="fRadioText">1,500</b> m</span>
+              <input id="fRadioRange" type="range" min="200" max="5000" step="100" value="1500" class="range-input mt-3" />
+            </label>
+            <label class="block">
+              <span class="form-label">Metros</span>
+              <input id="fRadio" type="number" min="200" max="5000" step="100" value="1500" class="form-input" />
+            </label>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-3" aria-label="Radios rápidos">
+            <button type="button" class="preset-chip" data-radius="500">500 m</button>
+            <button type="button" class="preset-chip" data-radius="800">800 m</button>
+            <button type="button" class="preset-chip" data-radius="1500">1.5 km</button>
+            <button type="button" class="preset-chip" data-radius="3000">3 km</button>
+            <button type="button" class="preset-chip" data-radius="5000">5 km</button>
+          </div>
+          <p id="radiusHint" class="mini-help mt-3">El círculo del mapa se actualiza con este radio. Al evaluar, la consulta DENUE usará el mismo valor.</p>
+         
         </div>
 
         <div class="grid grid-cols-2 gap-3">
@@ -81,7 +161,8 @@
         </div>
 
         <div>
-          <span class="form-label">Documentos que ya tengo</span>
+          <span class="form-label">Expediente documental</span>
+          <p class="text-[11px] font-bold text-[#9F2241]/55 mt-1">Marca documentos disponibles o carga archivos para que el sistema evalúe estatus, observaciones y seguimiento.</p>
           <div id="fDocs" class="grid grid-cols-1 gap-2 mt-2"></div>
         </div>
 
@@ -102,6 +183,7 @@
             <span id="gFuente" class="chip" title=""></span>
           </div>
           <h2 class="text-2xl font-black text-[#9F2241]">Diagnóstico de apertura</h2>
+          <p id="gGiro" class="text-sm font-bold text-[#691C32]/70"></p>
           <div class="grid grid-cols-3 gap-3 mt-4">
             <div class="metric-card"><p class="form-label">Afluencia</p><h3 id="kAfluencia" class="text-2xl font-black text-[#9F2241] mt-1">—</h3></div>
             <div class="metric-card"><p class="form-label">Competencia</p><h3 id="kComp" class="text-2xl font-black text-[#9F2241] mt-1">—</h3></div>
@@ -110,31 +192,90 @@
         </div>
       </div>
 
+      <!-- Inteligencia territorial / mapa -->
+      <div class="card">
+        <div class="flex flex-col xl:flex-row xl:items-start gap-5">
+          <div class="flex-1 min-w-0">
+            <h3 class="section-title"><span class="material-symbols-outlined">travel_explore</span>Mapa de inteligencia territorial DENUE</h3>
+            <p class="section-sub">Visualiza ubicación propuesta, radio de análisis, competidores, unidades económicas y mercados públicos de referencia.</p>
+            <div id="territorialMap"></div>
+            <div class="map-legend">
+              <span class="legend-item"><i class="dot" style="background:#9F2241"></i>Competencia DENUE</span>
+              <span class="legend-item"><i class="dot" style="background:#BC955C"></i>Radio de análisis</span>
+              <span class="legend-item"><i class="dot" style="background:#2E7D32"></i>Tu ubicación</span>
+              <span class="legend-item"><i class="dot" style="background:#1E5AA8"></i>Mercado / atractor</span>
+            </div>
+          </div>
+          <aside class="xl:w-[310px] shrink-0 space-y-3">
+            <div id="mapStats" class="grid grid-cols-2 gap-3"></div>
+            <div>
+              <p class="form-label mb-2">Unidades económicas cercanas</p>
+              <div id="denueList" class="denue-list"></div>
+            </div>
+            <p id="mapStatus" class="text-xs font-bold text-[#9F2241]/60"></p>
+            <div class="map-live-note" id="mapLiveNote">Mueve el radio en el formulario para actualizar el círculo del mapa. Reevalúa para refrescar DENUE con el nuevo radio.</div>
+            <div class="map-toolbar">
+              <button type="button" id="btnFitMap" class="map-tool"><span class="material-symbols-outlined text-[16px]">center_focus_strong</span>Centrar mapa</button>
+              <button type="button" id="btnReevalMap" class="map-tool"><span class="material-symbols-outlined text-[16px]">refresh</span>Reevaluar</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <!-- Resultado seccionado -->
+      <div class="grid xl:grid-cols-3 gap-5">
+        <div class="card xl:col-span-2">
+          <h3 class="section-title"><span class="material-symbols-outlined">dashboard_customize</span>Resumen por tópicos de decisión</h3>
+          <p class="section-sub">Lectura ejecutiva para emprendedores, inversionistas y personal de SEDECO.</p>
+          <div id="topicGrid" class="grid md:grid-cols-2 gap-3"></div>
+        </div>
+        <div class="card">
+          <h3 class="section-title"><span class="material-symbols-outlined">psychology</span>Agentes evaluadores</h3>
+          <p class="section-sub">Puntajes parciales del análisis de viabilidad.</p>
+          <div id="agentGrid" class="agent-grid"></div>
+        </div>
+      </div>
+
       <div class="grid lg:grid-cols-2 gap-5">
         <!-- Figura legal -->
         <div class="card">
-          <h3 class="font-black text-[#9F2241] flex items-center gap-2 mb-3"><span class="material-symbols-outlined">gavel</span>Figura legal recomendada</h3>
+          <h3 class="section-title"><span class="material-symbols-outlined">gavel</span>1. Figura legal y fiscal</h3>
+          <p class="section-sub">Define si conviene iniciar como persona física o constituir sociedad.</p>
           <div id="figura"></div>
         </div>
 
         <!-- Afluencia y competencia -->
         <div class="card">
-          <h3 class="font-black text-[#9F2241] flex items-center gap-2 mb-3"><span class="material-symbols-outlined">groups</span>Afluencia y competencia</h3>
+          <h3 class="section-title"><span class="material-symbols-outlined">groups</span>2. Afluencia, competencia y mercado</h3>
+          <p class="section-sub">Evalúa saturación comercial, atractores y densidad económica cercana.</p>
           <ul id="afluencia" class="space-y-2 text-sm font-semibold text-[#691C32]/80"></ul>
         </div>
       </div>
 
       <!-- Trámites SIAPEM -->
       <div class="card">
-        <h3 class="font-black text-[#9F2241] flex items-center gap-2 mb-3"><span class="material-symbols-outlined">description</span>Trámites y permisos en SIAPEM</h3>
+        <h3 class="section-title"><span class="material-symbols-outlined">description</span>3. Trámites y permisos SIAPEM</h3>
+        <p class="section-sub">Ruta orientativa de apertura, requisitos previos, permisos, tiempos y vigencia.</p>
         <div id="tramites"></div>
       </div>
 
       <!-- Programas CDMX -->
       <div class="card">
-        <h3 class="font-black text-[#9F2241] flex items-center gap-2 mb-3"><span class="material-symbols-outlined">volunteer_activism</span>Programas de la CDMX para ti</h3>
+        <h3 class="section-title"><span class="material-symbols-outlined">volunteer_activism</span>4. Programas CDMX y apoyos disponibles</h3>
+        <p class="section-sub">Opciones para capacitación, financiamiento o acompañamiento empresarial.</p>
         <div id="programas" class="grid md:grid-cols-2 gap-3"></div>
         <p id="programasNota" class="text-xs font-bold text-[#9F2241]/55 mt-3"></p>
+      </div>
+
+
+      <!-- Expediente documental -->
+      <div class="card">
+        <h3 class="section-title"><span class="material-symbols-outlined">folder_managed</span>5. Evaluación y seguimiento documental</h3>
+        <p class="section-sub">Controla documentos cargados, faltantes, prevención, observaciones y archivo ligado al folio de solicitud.</p>
+        <div id="docSummary" class="grid md:grid-cols-4 gap-3 mb-4"></div>
+        <div id="docTimeline" class="stepper mb-4"></div>
+        <div id="docEvalBox" class="doc-table"></div>
+        <p id="docStorageNote" class="text-xs font-bold text-[#9F2241]/55 mt-3"></p>
       </div>
 
       <!-- Diagnóstico de agentes -->
@@ -156,21 +297,14 @@
 
   <script type="module">
     import { evaluarViabilidad, REQUERIDOS_POR_GIRO } from './viabilityAgent.js';
-    import { evaluarSIAPEM, GIROS_SIAPEM, SIAPEM_URL, LLAVE_URL } from './siapemEngine.js';
+    import { evaluarSIAPEM, SIAPEM_URL, LLAVE_URL } from './siapemEngine.js';
     import { fetchDENUEFromINEGI, mockDENUE } from './dataService.js';
+    import { CATALOGO_GIROS, SECTORES_ORDEN, giroPorClave, girosPorSector } from './catalogoGiros.js';
 
     // ---- DENUE en vivo vía proxy (oculta el token de INEGI, resuelve CORS) ----
     // Si sirves el simulador desde el mismo dominio, puedes usar la ruta relativa:
     //   const PROXY_URL = '/api/denue_proxy.php';
     const PROXY_URL = 'https://itzamna.tech/api/denue_proxy.php';
-    // Término de búsqueda DENUE por giro (sin acentos, como espera el endpoint).
-    const CONDICION_DENUE = {
-      'cafetería': 'cafeteria', 'abarrotes': 'abarrotes', 'papelería': 'papeleria',
-      'farmacia': 'farmacia', 'estética': 'estetica', 'taller': 'taller mecanico',
-      'autolavado': 'autolavado', 'fonda': 'fonda', 'comercio': 'comercio',
-      'servicios': 'servicios', 'restaurante': 'restaurante', 'hotel': 'hotel',
-      'salon': 'salon de eventos', 'bar': 'bar', 'antro': 'antro'
-    };
 
     // ---- Gate de sesión ----
     if (sessionStorage.getItem('radar_role') !== 'business') location.href = 'login.html';
@@ -190,7 +324,13 @@
 
     // ---- Poblar selects ----
     const selGiro = document.getElementById('fGiro');
-    selGiro.innerHTML = Object.entries(GIROS_SIAPEM).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+    const porSector = girosPorSector();
+    selGiro.innerHTML = SECTORES_ORDEN.map((sector) => {
+      const opts = porSector[sector].map((g) => `<option value="${g.clave}">${g.clasificacion}</option>`).join('');
+      return `<optgroup label="${sector}">${opts}</optgroup>`;
+    }).join('');
+    selGiro.value = '722515'; // arranca en "Cafeterías, fuentes de sodas..."
+
     const selAlc = document.getElementById('fAlcaldia');
     selAlc.innerHTML = ALCALDIAS.map(a => `<option>${a}</option>`).join('');
     const selZona = document.getElementById('fZona');
@@ -201,12 +341,116 @@
     selAlc.addEventListener('change', llenarZonas);
     llenarZonas();
 
-    function llenarDocs() {
-      const reqs = REQUERIDOS_POR_GIRO[selGiro.value] || REQUERIDOS_POR_GIRO.default;
-      document.getElementById('fDocs').innerHTML = reqs.map((r, i) =>
-        `<label class="check"><input type="checkbox" class="docchk" value="${r}" id="doc${i}" /> ${r}</label>`).join('');
+    const DOC_MAX_LOCAL_BYTES = 1_800_000; // localStorage no es repositorio final; solo demo/seguimiento local
+    const expedienteDocs = new Map(); // docName -> { requerido, checked, archivo, evaluacion, dataUrl? }
+
+    function evaluarDocumentoLocal({ requerido, file, checked }) {
+      if (!file && !checked) {
+        return { estado: 'faltante', confianza: 0, nota: 'No cargado ni marcado como disponible.', accion: 'Cargar archivo o marcar para revisión presencial.', severidad: 'alta' };
+      }
+      if (!file && checked) {
+        return { estado: 'pendiente-carga', confianza: 45, nota: 'Marcado como disponible, pero sin archivo cargado.', accion: 'Adjuntar evidencia antes de enviar o quedará sujeto a prevención.', severidad: 'media' };
+      }
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+      const okExt = ['pdf','jpg','jpeg','png','webp'].includes(ext);
+      const smallEnough = file.size <= 8_000_000;
+      const nameMatch = requerido.toLowerCase().split(/\s+/).some(w => w.length > 4 && file.name.toLowerCase().includes(w.normalize('NFD').replace(/[\u0300-\u036f]/g,'')));
+      if (!okExt) return { estado: 'rechazado', confianza: 20, nota: 'Formato no permitido. Usa PDF, JPG, PNG o WEBP.', accion: 'Reemplazar archivo.', severidad: 'alta' };
+      if (!smallEnough) return { estado: 'pesado', confianza: 60, nota: 'Archivo válido, pero pesado para almacenamiento local.', accion: 'Se guardará metadata; subir a servidor/S3/GCS en producción.', severidad: 'media' };
+      return { estado: nameMatch ? 'validado' : 'por-revisar', confianza: nameMatch ? 92 : 74, nota: nameMatch ? 'Archivo recibido y coincide con el requisito.' : 'Archivo recibido; requiere revisión de contenido por funcionario.', accion: nameMatch ? 'Sin acción inmediata.' : 'Validar manualmente durante revisión.', severidad: nameMatch ? 'baja' : 'media' };
     }
-    selGiro.addEventListener('change', llenarDocs);
+
+    function estadoDocColor(estado) {
+      if (['validado'].includes(estado)) return '#2E7D32';
+      if (['pendiente-carga','por-revisar','pesado'].includes(estado)) return '#BC955C';
+      return '#C62828';
+    }
+
+    function estadoDocIcon(estado) {
+      return ({ validado:'verified', 'por-revisar':'manage_search', 'pendiente-carga':'upload_file', pesado:'cloud_upload', rechazado:'error', faltante:'cancel' })[estado] || 'help';
+    }
+
+    function estadoDocLabel(estado) {
+      return ({ validado:'Validado', 'por-revisar':'Por revisar', 'pendiente-carga':'Sin archivo', pesado:'Metadata', rechazado:'Rechazado', faltante:'Faltante' })[estado] || estado;
+    }
+
+    function fileToDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+    }
+
+    async function registrarArchivoDocumento(docName, file) {
+      const current = expedienteDocs.get(docName) || { requerido: docName, checked: false };
+      current.checked = true;
+      current.archivo = { name: file.name, type: file.type || 'application/octet-stream', size: file.size, lastModified: file.lastModified };
+      current.evaluacion = evaluarDocumentoLocal({ requerido: docName, file, checked: true });
+      if (file.size <= DOC_MAX_LOCAL_BYTES && ['pdf','jpg','jpeg','png','webp'].includes((file.name.split('.').pop() || '').toLowerCase())) {
+        try { current.dataUrl = await fileToDataURL(file); current.archivo.almacenamiento = 'local-base64-demo'; }
+        catch { current.archivo.almacenamiento = 'metadata-only'; }
+      } else {
+        current.archivo.almacenamiento = 'metadata-only';
+      }
+      expedienteDocs.set(docName, current);
+      llenarDocs(false);
+    }
+
+    function toggleDocumento(docName, checked) {
+      const current = expedienteDocs.get(docName) || { requerido: docName };
+      current.checked = checked;
+      current.evaluacion = evaluarDocumentoLocal({ requerido: docName, file: null, checked });
+      expedienteDocs.set(docName, current);
+      llenarDocs(false);
+    }
+
+    function limpiarDocumento(docName) {
+      expedienteDocs.delete(docName);
+      llenarDocs(false);
+    }
+
+    function getDocsSnapshot(requeridos = null) {
+      const reqs = requeridos || [...document.querySelectorAll('.docchk')].map(d => d.value);
+      return reqs.map((r) => {
+        const d = expedienteDocs.get(r) || { requerido: r, checked: false, evaluacion: evaluarDocumentoLocal({ requerido: r, checked: false }) };
+        return { requerido: r, checked: !!d.checked, archivo: d.archivo || null, evaluacion: d.evaluacion, dataUrl: d.dataUrl || null };
+      });
+    }
+
+    function llenarDocs(reset = true) {
+      const g = giroPorClave(selGiro.value);
+      const reqs = REQUERIDOS_POR_GIRO[g?.categoria] || REQUERIDOS_POR_GIRO.default;
+      if (reset) {
+        [...expedienteDocs.keys()].forEach(k => { if (!reqs.includes(k)) expedienteDocs.delete(k); });
+      }
+      document.getElementById('fDocs').innerHTML = reqs.map((r, i) => {
+        const d = expedienteDocs.get(r) || { checked: false, evaluacion: evaluarDocumentoLocal({ requerido: r, checked: false }) };
+        const ev = d.evaluacion || evaluarDocumentoLocal({ requerido: r, checked: !!d.checked });
+        const col = estadoDocColor(ev.estado);
+        const cls = ev.estado === 'validado' ? 'ok' : ev.severidad === 'media' ? 'warn' : 'bad';
+        const fileTxt = d.archivo ? `${d.archivo.name} · ${(d.archivo.size/1024/1024).toFixed(2)} MB` : 'Sin archivo cargado';
+        return `<div class="doc-card ${cls}">
+          <div class="doc-head">
+            <input type="checkbox" class="docchk" value="${r}" id="doc${i}" ${d.checked ? 'checked' : ''} data-doc-name="${encodeURIComponent(r)}" />
+            <label for="doc${i}" class="flex-1">${r}<br><span class="doc-file">${fileTxt}</span></label>
+          </div>
+          <div class="doc-tools">
+            <span class="doc-status" style="color:${col};background:${col}1a"><span class="material-symbols-outlined text-[15px]">${estadoDocIcon(ev.estado)}</span>${estadoDocLabel(ev.estado)} · ${ev.confianza}%</span>
+            <label class="doc-btn" for="fileDoc${i}">Subir archivo</label>
+            <input id="fileDoc${i}" class="file-hidden docfile" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" data-doc-name="${encodeURIComponent(r)}" />
+            ${d.archivo ? `<button type="button" class="doc-btn docclear" data-doc-name="${encodeURIComponent(r)}">Quitar</button>` : ''}
+          </div>
+          <div class="doc-progress"><i style="width:${Math.max(6, ev.confianza || 0)}%;background:${col}"></i></div>
+          <p class="text-[11px] font-bold text-[#691C32]/65">${ev.nota}</p>
+        </div>`;
+      }).join('');
+      document.querySelectorAll('.docchk').forEach(inp => inp.addEventListener('change', e => toggleDocumento(decodeURIComponent(e.target.dataset.docName), e.target.checked)));
+      document.querySelectorAll('.docfile').forEach(inp => inp.addEventListener('change', e => { const file = e.target.files?.[0]; if (file) registrarArchivoDocumento(decodeURIComponent(e.target.dataset.docName), file); }));
+      document.querySelectorAll('.docclear').forEach(btn => btn.addEventListener('click', e => limpiarDocumento(decodeURIComponent(e.currentTarget.dataset.docName))));
+    }
+    selGiro.addEventListener('change', () => llenarDocs(true));
     llenarDocs();
 
     // ---- Helpers de color/severidad ----
@@ -217,18 +461,81 @@
     const impactoColor = (n) => n === 'Bajo Impacto' ? '#2E7D32' : n === 'Impacto Vecinal' ? '#BC955C' : '#C62828';
 
     let ULTIMO = null; // guarda el último resultado para enviar
+    let lastEvaluatedRadius = null;
+
+    const radioInput = document.getElementById('fRadio');
+    const radioRange = document.getElementById('fRadioRange');
+    const radioText = document.getElementById('fRadioText');
+    const endpointPreview = document.getElementById('endpointPreview');
+    const radiusHint = document.getElementById('radiusHint');
+
+    function getSelectedCenter() {
+      const z = selZona.value;
+      const c = CENTROS[z] || CENTROS['Roma Norte'];
+      return { zona: z, ...c };
+    }
+
+    function clampRadius(v) {
+      const n = Number(v) || 1500;
+      return Math.max(200, Math.min(5000, Math.round(n / 100) * 100));
+    }
+
+    function buildDenueEndpointPreview() {
+      const c = getSelectedCenter();
+      const g = giroPorClave(selGiro.value) || { condicion: selGiro.value, clasificacion: selGiro.value };
+      const url = new URL(PROXY_URL, window.location.origin);
+      url.searchParams.set('condition', g.condicion || g.clasificacion || selGiro.value);
+      url.searchParams.set('lat', c.lat);
+      url.searchParams.set('lng', c.lng);
+      url.searchParams.set('radius', clampRadius(radioInput.value));
+      return url.toString();
+    }
+
+    function updateGeoPreview({ redrawMap = true, markDirty = true } = {}) {
+      const r = clampRadius(radioInput.value);
+      radioInput.value = r;
+      if (radioRange) radioRange.value = r;
+      if (radioText) radioText.textContent = r.toLocaleString('es-MX');
+      document.querySelectorAll('.preset-chip').forEach(b => b.classList.toggle('active', Number(b.dataset.radius) === r));
+      const c = getSelectedCenter();
+      const zp = document.getElementById('zonePreview');
+      if (zp) zp.textContent = `${c.zona} · ${c.alcaldia} · ${Number(c.lat).toFixed(5)}, ${Number(c.lng).toFixed(5)}`;
+      if (endpointPreview) endpointPreview.textContent = buildDenueEndpointPreview();
+
+      if (ULTIMO && redrawMap) {
+        ULTIMO.radius = r;
+        ULTIMO.center = { lat: c.lat, lng: c.lng };
+        ULTIMO.zona = c.zona;
+        ULTIMO.alcaldia = c.alcaldia;
+        renderTerritorialMap(ULTIMO.viab, ULTIMO.siapem, { tipo: ULTIMO.fuente, msg: ULTIMO.fuenteMsg }, ULTIMO.giro);
+        const changed = lastEvaluatedRadius !== null && r !== lastEvaluatedRadius;
+        if (radiusHint) radiusHint.textContent = changed ? 'El mapa ya refleja el nuevo radio. Presiona “Evaluar viabilidad” para actualizar la consulta DENUE y los puntajes.' : 'El radio del mapa y la consulta DENUE están sincronizados.';
+        const note = document.getElementById('mapLiveNote');
+        if (note) note.textContent = changed ? `Vista actualizada a ${r.toLocaleString('es-MX')} m. Reevalúa para recalcular competencia con DENUE.` : 'Radio sincronizado con la última evaluación.';
+      }
+    }
+
+    radioInput.addEventListener('input', () => updateGeoPreview());
+    radioRange?.addEventListener('input', () => { radioInput.value = radioRange.value; updateGeoPreview(); });
+    document.querySelectorAll('.preset-chip').forEach(btn => btn.addEventListener('click', () => { radioInput.value = btn.dataset.radius; updateGeoPreview(); }));
+    selZona.addEventListener('change', () => updateGeoPreview());
+    selAlc.addEventListener('change', () => setTimeout(() => updateGeoPreview(), 0));
+    selGiro.addEventListener('change', () => updateGeoPreview({ redrawMap: false }));
+    updateGeoPreview({ redrawMap: false, markDirty: false });
 
     document.getElementById('btnEval').addEventListener('click', evaluar);
 
     async function evaluar() {
-      const giro = selGiro.value;
+      const claveGiro = selGiro.value;
+      const g = giroPorClave(claveGiro) || { clave: claveGiro, clasificacion: claveGiro, categoria: 'servicios', condicion: claveGiro };
       const zona = selZona.value;
       const c = CENTROS[zona];
       const center = { lat: c.lat, lng: c.lng };
       const alcaldia = c.alcaldia;
       const radius = Number(document.getElementById('fRadio').value) || 1500;
-      const documentos = [...document.querySelectorAll('.docchk:checked')].map(d => d.value);
-      const requeridos = REQUERIDOS_POR_GIRO[giro] || REQUERIDOS_POR_GIRO.default;
+      const requeridos = REQUERIDOS_POR_GIRO[g.categoria] || REQUERIDOS_POR_GIRO.default;
+      const docsSnapshot = getDocsSnapshot(requeridos);
+      const documentos = docsSnapshot.filter(d => d.checked && d.evaluacion?.estado !== 'rechazado').map(d => d.requerido);
 
       // Estado de carga
       const btn = document.getElementById('btnEval');
@@ -237,7 +544,7 @@
       btn.innerHTML = '<span class="material-symbols-outlined">progress_activity</span>Consultando DENUE…';
 
       // 1) Datos DENUE en vivo (proxy) con respaldo a demo
-      const condition = CONDICION_DENUE[giro] || (GIROS_SIAPEM[giro]?.label || giro).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const condition = g.condicion || g.clasificacion;
       let denueFeatures = mockDENUE;
       let fuente = { tipo: 'mock', msg: '' };
       try {
@@ -249,10 +556,13 @@
       }
 
       // 2) Evaluación con esos datos
-      const inputViab = { businessType: giro, alcaldia, center, radius, documentos, requeridos, denueFeatures };
+      // Para uso de suelo (viabilityAgent) usamos la categoría gruesa; para
+      // competencia/afluencia (siapemEngine) usamos la clasificación oficial.
+      const superficie = Number(document.getElementById('fSuperficie').value) || 0;
+      const inputViab = { businessType: g.categoria, alcaldia, center, radius, documentos, requeridos, denueFeatures };
       const inputSiapem = {
-        giro, center, radius, denueFeatures,
-        superficie: Number(document.getElementById('fSuperficie').value) || 0,
+        giro: claveGiro, giroLabel: g.clasificacion, center, radius, denueFeatures,
+        superficie,
         aforo: Number(document.getElementById('fAforo').value) || 0,
         ventaAlcohol: document.getElementById('fAlcohol').checked,
         musicaBaile: document.getElementById('fBaile').checked,
@@ -261,17 +571,22 @@
         limitarResponsabilidad: document.getElementById('fResp').checked,
         buscaInversion: document.getElementById('fInvExt').checked,
         proyeccionCrecimiento: document.getElementById('fCrecimiento').value,
-        tamano: Number(document.getElementById('fSuperficie').value) > 250 ? 'mediana' : 'micro'
+        tamano: superficie > 250 ? 'mediana' : 'micro'
       };
 
       const [viab, siapem] = await Promise.all([evaluarViabilidad(inputViab), evaluarSIAPEM(inputSiapem)]);
-      ULTIMO = { viab, siapem, giro, alcaldia, zona, fuente: fuente.tipo };
+      ULTIMO = { viab, siapem, giro: g, alcaldia, zona, fuente: fuente.tipo, denueFeatures, center, radius, fuenteMsg: fuente.msg, documentos: docsSnapshot };
+      lastEvaluatedRadius = radius;
+      if (radiusHint) radiusHint.textContent = 'El radio del mapa y la consulta DENUE están sincronizados.';
+      const note = document.getElementById('mapLiveNote');
+      if (note) note.textContent = 'Radio sincronizado con la última evaluación.';
       btn.disabled = false; btn.innerHTML = btnHTML;
-      pintar(viab, siapem, fuente);
+      pintar(viab, siapem, fuente, g);
     }
 
-    function pintar(viab, siapem, fuente = { tipo: 'mock', msg: '' }) {
+    function pintar(viab, siapem, fuente = { tipo: 'mock', msg: '' }, g = null) {
       document.getElementById('resultados').classList.remove('hidden');
+      if (g) document.getElementById('gGiro').textContent = `${g.clasificacion} · SCIAN ${g.clave} · ${g.sector}`;
 
       // Resumen
       const deg = Math.round(viab.score * 3.6);
@@ -296,6 +611,11 @@
       const kA = document.getElementById('kAfluencia'); kA.textContent = af.nivelAfluencia; kA.style.color = colorNivel(af.nivelAfluencia);
       const kC = document.getElementById('kComp'); kC.textContent = `${af.competidores}`; kC.style.color = colorNivel(af.nivelCompetencia === 'Alta' ? 'Baja' : af.nivelCompetencia === 'Media' ? 'Media' : 'Alta');
       document.getElementById('kMerc').textContent = af.distanciaMercadoM != null ? `${af.distanciaMercadoM} m` : 'N/D';
+
+      renderTerritorialMap(viab, siapem, fuente, g);
+      renderTopicGrid(viab, siapem, fuente, g);
+      renderAgentGrid(viab);
+      renderDocTracking(viab, siapem);
 
       // Figura legal
       const fl = siapem.figuraLegal;
@@ -328,6 +648,12 @@
         </div>
         <p class="font-black text-[#691C32]">${t.tramite}</p>
         <ul class="space-y-1 text-xs font-semibold text-[#691C32]/60 mt-1 mb-4">${siapem.impacto.motivos.map(m => `<li>· ${m}</li>`).join('')}</ul>
+        <div class="stepper mb-4">
+          <div class="step"><b>Crear o ingresar con LLAVE CDMX</b><span>El promovente debe validar identidad digital antes de iniciar el trámite.</span></div>
+          <div class="step"><b>Capturar datos del establecimiento</b><span>Razón social/persona física, domicilio, superficie, aforo, giro SCIAN y modalidad de operación.</span></div>
+          <div class="step"><b>Adjuntar documentos y responsivas</b><span>Zonificación, posesión del inmueble, identificación, protección civil y permisos especiales cuando apliquen.</span></div>
+          <div class="step"><b>Enviar a revisión / generar acuse</b><span>El expediente queda trazable para revisión institucional, prevención, aprobación o rechazo.</span></div>
+        </div>
         <div class="grid md:grid-cols-2 gap-4">
           <div>
             <p class="form-label">Requisitos previos</p>
@@ -375,20 +701,215 @@
       document.getElementById('resultados').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+
+    // ---- Mapa y lectura territorial ----
+    let territorialMap = null;
+    let denueLayer = null;
+    let analysisLayer = null;
+
+    const MERCADOS_REFERENCIA = [
+      { nombre: 'Mercado Medellín', lat: 19.4077, lng: -99.1653, zona: 'Roma / Condesa' },
+      { nombre: 'Mercado San Juan', lat: 19.4307, lng: -99.1431, zona: 'Centro' },
+      { nombre: 'Mercado Coyoacán', lat: 19.3497, lng: -99.1624, zona: 'Coyoacán' },
+      { nombre: 'Mercado Escandón', lat: 19.4053, lng: -99.1807, zona: 'Miguel Hidalgo' },
+      { nombre: 'Mercado Tlacoquemécatl', lat: 19.3814, lng: -99.1712, zona: 'Del Valle' }
+    ];
+
+    function getLatLngFromFeature(f) {
+      if (!f) return null;
+      if (f.geometry?.coordinates?.length >= 2) {
+        const [lng, lat] = f.geometry.coordinates.map(Number);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+      }
+      const lat = Number(f.Latitud ?? f.latitud ?? f.lat ?? f.properties?.Latitud ?? f.properties?.latitud ?? f.properties?.lat);
+      const lng = Number(f.Longitud ?? f.longitud ?? f.lng ?? f.lon ?? f.properties?.Longitud ?? f.properties?.longitud ?? f.properties?.lng ?? f.properties?.lon);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+      return null;
+    }
+
+    function getFeatureName(f) {
+      return f?.properties?.name || f?.properties?.Nombre || f?.Nombre || f?.nombre || f?.Denominacion || 'Unidad económica';
+    }
+
+    function getFeatureClass(f) {
+      return f?.properties?.class || f?.properties?.Clase_actividad || f?.Clase_actividad || f?.actividad || f?.Estrato || 'Actividad económica';
+    }
+
+    function distanceMeters(a, b) {
+      const R = 6371000;
+      const dLat = (b.lat - a.lat) * Math.PI / 180;
+      const dLng = (b.lng - a.lng) * Math.PI / 180;
+      const la1 = a.lat * Math.PI / 180;
+      const la2 = b.lat * Math.PI / 180;
+      const x = Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+      return Math.round(2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1-x)));
+    }
+
+    function renderTerritorialMap(viab, siapem, fuente, g) {
+      const ctx = ULTIMO || {};
+      const center = ctx.center || { lat: 19.432608, lng: -99.133209 };
+      const radius = Number(ctx.radius || document.getElementById('fRadio').value || 1500);
+      const denue = Array.isArray(ctx.denueFeatures) ? ctx.denueFeatures : [];
+
+      if (!territorialMap) {
+        territorialMap = L.map('territorialMap', { zoomControl: false, scrollWheelZoom: false }).setView([center.lat, center.lng], 14);
+        L.control.zoom({ position: 'bottomright' }).addTo(territorialMap);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '© OpenStreetMap'
+        }).addTo(territorialMap);
+        analysisLayer = L.layerGroup().addTo(territorialMap);
+        denueLayer = L.layerGroup().addTo(territorialMap);
+      }
+      analysisLayer.clearLayers();
+      denueLayer.clearLayers();
+
+      L.circle([center.lat, center.lng], {
+        radius, color: '#BC955C', weight: 2, dashArray: '8 8', fillColor: '#BC955C', fillOpacity: .08
+      }).addTo(analysisLayer).bindPopup(`<b>Radio de análisis</b><br>${radius.toLocaleString('es-MX')} metros`);
+      L.circleMarker([center.lat, center.lng], {
+        radius: 10, color: '#2E7D32', fillColor: '#2E7D32', fillOpacity: .95, weight: 3
+      }).addTo(analysisLayer).bindPopup(`<b>Ubicación propuesta</b><br>${document.getElementById('fNombre').value || 'Nuevo negocio'}<br>${g?.clasificacion || ''}`);
+
+      const placed = [];
+      denue.slice(0, 140).forEach((f) => {
+        const ll = getLatLngFromFeature(f);
+        if (!ll) return;
+        placed.push({ ...ll, name: getFeatureName(f), klass: getFeatureClass(f) });
+        L.circleMarker([ll.lat, ll.lng], {
+          radius: 5, color: '#9F2241', fillColor: '#9F2241', fillOpacity: .78, weight: 1.5
+        }).addTo(denueLayer).bindPopup(`<b>${getFeatureName(f)}</b><br>${getFeatureClass(f)}`);
+      });
+
+      MERCADOS_REFERENCIA.forEach((m) => {
+        const d = distanceMeters(center, m);
+        if (d <= Math.max(radius * 1.25, 1800)) {
+          L.circleMarker([m.lat, m.lng], { radius: 7, color: '#1E5AA8', fillColor: '#1E5AA8', fillOpacity: .88, weight: 2 })
+            .addTo(analysisLayer).bindPopup(`<b>${m.nombre}</b><br>${m.zona}<br>${d} m aprox.`);
+        }
+      });
+
+      territorialMap.setView([center.lat, center.lng], radius <= 700 ? 15 : radius <= 1600 ? 14 : 13);
+      setTimeout(() => territorialMap.invalidateSize(), 160);
+
+      const fuenteTxt = fuente?.tipo === 'live' ? 'DENUE en vivo vía itzamna.tech' : 'Datos demo / respaldo local';
+      document.getElementById('mapStatus').textContent = `${fuenteTxt}. ${fuente?.msg || ''} Endpoint: ${buildDenueEndpointPreview()}`;
+      document.getElementById('mapStats').innerHTML = `
+        <div class="metric-card"><p class="form-label">Radio</p><p class="text-lg font-black text-[#9F2241] mt-1">${radius.toLocaleString('es-MX')} m</p></div>
+        <div class="metric-card"><p class="form-label">DENUE</p><p class="text-lg font-black text-[#9F2241] mt-1">${placed.length}</p></div>
+        <div class="metric-card"><p class="form-label">Competidores</p><p class="text-lg font-black text-[#9F2241] mt-1">${siapem.afluencia.competidores}</p></div>
+        <div class="metric-card"><p class="form-label">Afluencia</p><p class="text-lg font-black text-[#9F2241] mt-1">${siapem.afluencia.nivelAfluencia}</p></div>`;
+
+      const nearest = placed.map(x => ({ ...x, d: distanceMeters(center, x) })).sort((a,b) => a.d - b.d).slice(0, 12);
+      document.getElementById('denueList').innerHTML = nearest.length ? nearest.map(x => `
+        <div class="denue-row"><span><b>${x.name}</b><br><small>${x.klass}</small></span><span>${x.d} m</span></div>`).join('') :
+        '<div class="denue-row"><span>No hay coordenadas válidas para mostrar.</span></div>';
+    }
+
+    function renderTopicGrid(viab, siapem, fuente, g) {
+      const af = siapem.afluencia;
+      const impacto = siapem.impacto.etiqueta;
+      const fl = siapem.figuraLegal.titulo;
+      const docSnap = ULTIMO?.documentos || [];
+      const docOk = docSnap.filter(d => d.evaluacion?.estado === 'validado').length;
+      const docReview = docSnap.filter(d => ['por-revisar','pendiente-carga','pesado'].includes(d.evaluacion?.estado)).length;
+      const faltantes = docSnap.filter(d => ['faltante','rechazado'].includes(d.evaluacion?.estado)).length || (viab.faltantes || []).length;
+      const fuenteTxt = fuente?.tipo === 'live' ? 'Base real DENUE/INEGI' : 'Modo demostración';
+      const topics = [
+        ['storefront', 'Viabilidad comercial', `${viab.score}/100 · ${viab.nivel}`, viab.viable ? 'El giro puede avanzar con observaciones operativas.' : 'Conviene ajustar ubicación, documentos o condiciones antes de abrir.'],
+        ['map', 'Territorio y afluencia', af.nivelAfluencia, `${af.unidadesCercanas} unidades económicas detectadas dentro del radio seleccionado.`],
+        ['radar', 'Competencia directa', `${af.competidores} competidores`, `Nivel de competencia: ${af.nivelCompetencia}. Revisa diferenciación, precios y horarios.`],
+        ['fact_check', 'Clasificación SIAPEM', impacto, `Ruta sugerida: ${siapem.tramites.tramite}.`],
+        ['gavel', 'Figura legal', fl, 'La recomendación se ajusta según socios, inversión, crecimiento y protección patrimonial.'],
+        ['folder_managed', 'Expediente documental', `${docOk} validados · ${docReview} revisión · ${faltantes} faltantes`, faltantes ? 'Completa documentos para evitar prevención del trámite.' : 'Expediente listo para revisión documental.'],
+        ['database', 'Fuente de datos', fuenteTxt, fuente?.msg || 'El sistema conserva respaldo demo si el proxy no responde.'],
+        ['payments', 'Programas y apoyos', `${siapem.programas.recomendados.length} sugeridos`, 'Consulta capacitación, capital semilla o financiamiento según etapa del negocio.']
+      ];
+      document.getElementById('topicGrid').innerHTML = topics.map(([ic, title, value, body]) => `
+        <div class="topic-card">
+          <h4><span class="material-symbols-outlined text-[19px]">${ic}</span>${title}</h4>
+          <p class="text-lg font-black text-[#691C32]">${value}</p>
+          <p class="mt-1">${body}</p>
+        </div>`).join('');
+    }
+
+    function renderAgentGrid(viab) {
+      const agentes = viab.agentes || [];
+      const fallback = [
+        { nombre: 'Territorial', score: viab.score },
+        { nombre: 'Documental', score: Math.max(30, 100 - (viab.faltantes || []).length * 18) },
+        { nombre: 'Regulatorio', score: viab.viable ? 78 : 52 },
+        { nombre: 'Mercado', score: viab.nivel === 'Alta' ? 82 : viab.nivel === 'Media' ? 64 : 42 }
+      ];
+      const data = agentes.length ? agentes : fallback;
+      document.getElementById('agentGrid').innerHTML = data.map(a => {
+        const sc = Number(a.score ?? 0);
+        const col = sc >= 70 ? '#2E7D32' : sc >= 50 ? '#BC955C' : '#C62828';
+        return `<div class="agent-mini"><p class="text-xs font-black uppercase tracking-wider text-[#9F2241]/60">${a.nombre}</p><p class="text-2xl font-black" style="color:${col}">${sc}</p><div class="bar"><i style="width:${Math.max(0,Math.min(100,sc))}%;background:${col}"></i></div></div>`;
+      }).join('');
+    }
+
+
+    function renderDocTracking(viab, siapem) {
+      const docs = ULTIMO?.documentos || [];
+      const total = docs.length;
+      const validados = docs.filter(d => d.evaluacion?.estado === 'validado').length;
+      const revision = docs.filter(d => ['por-revisar','pendiente-carga','pesado'].includes(d.evaluacion?.estado)).length;
+      const faltantes = docs.filter(d => ['faltante','rechazado'].includes(d.evaluacion?.estado)).length;
+      const avance = total ? Math.round(((validados + revision * .55) / total) * 100) : 0;
+      const riesgo = faltantes ? 'Prevenible' : revision ? 'Revisión manual' : 'Completo';
+      document.getElementById('docSummary').innerHTML = `
+        <div class="metric-card"><p class="form-label">Avance</p><p class="text-2xl font-black text-[#9F2241] mt-1">${avance}%</p></div>
+        <div class="metric-card"><p class="form-label">Validados</p><p class="text-2xl font-black li-ok mt-1">${validados}</p></div>
+        <div class="metric-card"><p class="form-label">Por revisar</p><p class="text-2xl font-black li-warn mt-1">${revision}</p></div>
+        <div class="metric-card"><p class="form-label">Faltantes</p><p class="text-2xl font-black li-bad mt-1">${faltantes}</p></div>`;
+      document.getElementById('docTimeline').innerHTML = `
+        <div class="step"><b>Captura del expediente</b><span>${total} requisitos generados según giro, categoría SIAPEM y documentos base.</span></div>
+        <div class="step"><b>Validación automática</b><span>${validados} documentos coinciden; ${revision} quedan para revisión humana o carga definitiva.</span></div>
+        <div class="step"><b>Prevención o envío</b><span>Riesgo documental: ${riesgo}. Los faltantes se guardan como observaciones de seguimiento del folio.</span></div>
+        <div class="step"><b>Seguimiento institucional</b><span>Al enviar, se crea una llave radar_archivos_[folio] con archivos livianos y metadata para los demás.</span></div>`;
+      document.getElementById('docEvalBox').innerHTML = docs.map((d) => {
+        const ev = d.evaluacion || {};
+        const col = estadoDocColor(ev.estado);
+        const archivo = d.archivo ? `${d.archivo.name} · ${(d.archivo.size/1024/1024).toFixed(2)} MB` : 'Sin archivo';
+        const storage = d.archivo?.almacenamiento === 'local-base64-demo' ? 'Archivo almacenado localmente' : d.archivo ? 'Metadata almacenada; requiere repositorio backend' : 'Pendiente';
+        return `<div class="doc-line">
+          <div><p class="font-black text-[#691C32]">${d.requerido}</p><p class="text-xs font-bold text-[#691C32]/60">${archivo}</p></div>
+          <div><span class="doc-status" style="color:${col};background:${col}1a"><span class="material-symbols-outlined text-[15px]">${estadoDocIcon(ev.estado)}</span>${estadoDocLabel(ev.estado)} · ${ev.confianza || 0}%</span></div>
+          <div><p class="text-xs font-bold text-[#691C32]/70">${ev.accion || 'Sin acción'}</p><p class="text-[11px] font-bold text-[#9F2241]/55">${storage}</p></div>
+        </div>`;
+      }).join('') || '<div class="doc-line"><div>No hay documentos configurados.</div></div>';
+      document.getElementById('docStorageNote').textContent = 'Nota: localStorage es solo para demo/MVP. En producción, sustituye dataUrl por carga a S3, Google Cloud Storage o storage privado y guarda URL firmada por folio.';
+    }
+
+    document.getElementById('btnFitMap')?.addEventListener('click', () => {
+      if (!territorialMap) return;
+      const c = ULTIMO?.center || getSelectedCenter();
+      const r = clampRadius(radioInput.value);
+      territorialMap.setView([c.lat, c.lng], r <= 700 ? 15 : r <= 1600 ? 14 : 13);
+      setTimeout(() => territorialMap.invalidateSize(), 80);
+    });
+
+    document.getElementById('btnReevalMap')?.addEventListener('click', () => evaluar());
+
     // ---- Enviar solicitud a SEDECO (contrato localStorage 'radar_solicitudes') ----
     document.getElementById('btnEnviar').addEventListener('click', () => {
       if (!ULTIMO) return;
       const { viab, siapem, giro, alcaldia, zona } = ULTIMO;
       const lista = JSON.parse(localStorage.getItem('radar_solicitudes') || '[]');
       const folio = `SEDECO-2025-${String(lista.length + 1).padStart(4, '0')}`;
-      const nombre = document.getElementById('fNombre').value.trim() || (GIROS_SIAPEM[giro]?.label || giro);
+      const nombre = document.getElementById('fNombre').value.trim() || giro.clasificacion;
       const ident = identity.valor ? `${(identity.tipo || 'id').toUpperCase()}: ${identity.valor}` : '—';
+      const docs = ULTIMO?.documentos || [];
+      const docsMetadata = docs.map(d => ({ requerido: d.requerido, checked: d.checked, archivo: d.archivo, evaluacion: d.evaluacion }));
+      const archivosPayload = docs.filter(d => d.dataUrl).map(d => ({ requerido: d.requerido, archivo: d.archivo, dataUrl: d.dataUrl }));
 
       const solicitud = {
         folio,
         solicitante: nombre,
         identificacion: ident,
-        giro,
+        giro: giro.clasificacion,
+        claveSCIAN: giro.clave,
         alcaldia,
         zona,
         viabilidad: viab.score,
@@ -401,14 +922,32 @@
         // Enriquecimiento SIAPEM (solicitudes.html ignora campos extra sin problema)
         impacto: siapem.impacto.etiqueta,
         figuraLegal: siapem.figuraLegal.titulo,
-        tramite: siapem.tramites.tramite
+        tramite: siapem.tramites.tramite,
+        fuenteDatos: ULTIMO?.fuente || 'mock',
+        radioAnalisis: ULTIMO?.radius || null,
+        coordenadas: ULTIMO?.center || null,
+        unidadesDenue: Array.isArray(ULTIMO?.denueFeatures) ? ULTIMO.denueFeatures.length : 0,
+        expedienteDocumental: docsMetadata,
+        resumenDocumental: {
+          total: docs.length,
+          validados: docs.filter(d => d.evaluacion?.estado === 'validado').length,
+          revision: docs.filter(d => ['por-revisar','pendiente-carga','pesado'].includes(d.evaluacion?.estado)).length,
+          faltantes: docs.filter(d => ['faltante','rechazado'].includes(d.evaluacion?.estado)).length
+        },
+        archivosKey: `radar_archivos_${folio}`,
+        seguimiento: [
+          { fecha: new Date().toISOString(), estado: 'Recibida', nota: 'Solicitud recibida con diagnóstico territorial y expediente documental.' },
+          { fecha: new Date().toISOString(), estado: docsMetadata.some(d => ['faltante','rechazado'].includes(d.evaluacion?.estado)) ? 'Prevalidación con faltantes' : 'Prevalidación documental', nota: 'Resultado generado automáticamente por el simulador.' }
+        ]
       };
       lista.push(solicitud);
       localStorage.setItem('radar_solicitudes', JSON.stringify(lista));
+      localStorage.setItem(`radar_expediente_${folio}`, JSON.stringify(solicitud));
+      localStorage.setItem(`radar_archivos_${folio}`, JSON.stringify({ folio, archivos: archivosPayload, metadata: docsMetadata }));
 
       const box = document.getElementById('enviadoBox');
       box.classList.remove('hidden');
-      box.innerHTML = `<span class="material-symbols-outlined">task_alt</span>Solicitud enviada con folio <b>${folio}</b>. SEDECO la revisará en su bandeja.`;
+      box.innerHTML = `<span class="material-symbols-outlined">task_alt</span>Solicitud enviada con folio <b>${folio}</b>. Expediente documental guardado en <b>radar_expediente_${folio}</b> y archivos en <b>radar_archivos_${folio}</b>.`;
       document.getElementById('btnEnviar').disabled = true;
     });
 
