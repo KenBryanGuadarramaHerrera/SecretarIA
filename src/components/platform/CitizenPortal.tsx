@@ -8,7 +8,7 @@ function genFolio() {
   return 'SED-2025-00' + (4840 + Math.floor(Math.random() * 140));
 }
 
-const SAMPLE_DATA: Record<string, string> = {
+const DEMO_FIELDS: Record<string, string> = {
   'Nombre': 'Juan García Pérez',
   'CURP': 'GAPJ850312HDFRCN02',
   'Dirección': 'Av. Insurgentes Sur 1234, Col. Del Valle',
@@ -42,7 +42,7 @@ function detectTramite(track: string | null, size: string | null, alcohol: strin
 
 /* ---- TramiteChat ---- */
 type Msg = { from: 'bot' | 'user'; text: string };
-type FileItem = { id: string; name: string; status: 'proc' | 'ok' };
+type FileItem = { id: string; name: string; status: 'proc' | 'ok' | 'error' };
 
 function TramiteChat({ onSubmitted, goConsulta }: { onSubmitted: (folio: string, tipo: string, goTrack?: boolean) => void; goConsulta: () => void }) {
   const [msgs, setMsgs] = useState<Msg[]>([{ from: 'bot', text: 'Hola, soy SecretarIA. ¿Qué quieres hacer hoy? Puedes describirlo con tus palabras o elegir una opción.' }]);
@@ -52,9 +52,11 @@ function TramiteChat({ onSubmitted, goConsulta }: { onSubmitted: (folio: string,
   const [alcohol, setAlcohol] = useState<string | null>(null);
   const [detected, setDetected] = useState<Detected | null>(null);
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [extractedFields, setExtractedFields] = useState<Record<string, string>>({});
   const [folio, setFolio] = useState<string | null>(null);
   const [text, setText] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [msgs, stage, files]);
 
@@ -94,29 +96,61 @@ function TramiteChat({ onSubmitted, goConsulta }: { onSubmitted: (folio: string,
     user('Agendar cita presencial');
     setTimeout(() => { bot('Perfecto. Te muestro los módulos disponibles para agendar tu cita presencial. (Demo)'); setStage('cita'); }, 360);
   }
-  function addFiles(names: string[]) {
-    const base = files.length;
-    const nf: FileItem[] = names.map((n, i) => ({ id: `${base + i}-${Date.now()}`, name: n, status: 'proc' }));
+  async function uploadFile(file: File): Promise<void> {
+    const id = `${file.name}-${Date.now()}`;
+    setFiles(f => [...f, { id, name: file.name, status: 'proc' }]);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/ocr', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'OCR falló');
+      const f = data.fields ?? {};
+      setExtractedFields(prev => ({
+        ...prev,
+        ...(f.nombre && { 'Nombre': f.nombre }),
+        ...(f.curp && { 'CURP': f.curp }),
+        ...(f.rfc && { 'RFC': f.rfc }),
+        ...(f.giro && { 'Tipo de negocio': f.giro }),
+        ...(f.superficie && { 'Superficie': f.superficie }),
+        ...(f.domicilio && { 'Dirección': f.domicilio }),
+      }));
+      setFiles(fs => fs.map(x => x.id === id ? { ...x, status: 'ok' } : x));
+    } catch {
+      setFiles(fs => fs.map(x => x.id === id ? { ...x, status: 'error' as const } : x));
+    }
+  }
+
+  function simulateDemo() {
+    const demos = ['INE_frente.jpg', 'Comprobante_domicilio.pdf', 'CURP.pdf', 'Croquis_local.png'];
+    const nf: FileItem[] = demos.map((n, i) => ({ id: `demo-${i}-${Date.now()}`, name: n, status: 'proc' }));
     setFiles(f => [...f, ...nf]);
+    setExtractedFields(DEMO_FIELDS);
     nf.forEach((file, i) => {
       setTimeout(() => {
         setFiles(f => f.map(x => x.id === file.id ? { ...x, status: 'ok' } : x));
       }, 900 + i * 500);
     });
   }
+
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
     const fs = e.dataTransfer.files;
-    if (fs?.length) addFiles(Array.from(fs).map(f => f.name));
+    if (fs?.length) Array.from(fs).forEach(uploadFile);
   }
-  const allOk = files.length > 0 && files.every(f => f.status === 'ok');
+
+  function onFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files?.length) Array.from(e.target.files).forEach(uploadFile);
+  }
+  const allOk = files.length > 0 && files.every(f => f.status === 'ok' || f.status === 'error');
   function confirmSend() {
     const f = genFolio(); setFolio(f); setStage('success');
     onSubmitted(f, detected?.t ?? 'Trámite');
   }
   function reset() {
     setMsgs([{ from: 'bot', text: 'Hola de nuevo. ¿Qué otro trámite quieres iniciar?' }]);
-    setStage('start'); setTrack(null); setSize(null); setAlcohol(null); setDetected(null); setFiles([]); setFolio(null);
+    setStage('start'); setTrack(null); setSize(null); setAlcohol(null); setDetected(null);
+    setFiles([]); setFolio(null); setExtractedFields({});
   }
   function sendText() {
     if (!text.trim()) return;
@@ -223,12 +257,15 @@ function TramiteChat({ onSubmitted, goConsulta }: { onSubmitted: (folio: string,
       )}
       {stage === 'upload' && (
         <div style={{ padding: '4px 24px 16px' }}>
-          <div className="dropzone" onDragOver={e => e.preventDefault()} onDrop={onDrop}>
+          <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf"
+            style={{ display: 'none' }} onChange={onFileInput} />
+          <div className="dropzone" onDragOver={e => e.preventDefault()} onDrop={onDrop}
+            onClick={() => fileInputRef.current?.click()} style={{ cursor: 'pointer' }}>
             <div className="dz-ico"><Icon name="upload" /></div>
-            <div className="dz-t">Arrastra tus documentos o <b>súbelos aquí</b></div>
-            <div className="dz-sub">PDF o imágenes · puedes subir varios a la vez</div>
-            <div style={{ marginTop: 14 }}>
-              <button className="btn btn-secondary btn-sm" onClick={() => addFiles(['INE_frente.jpg', 'Comprobante_domicilio.pdf', 'CURP.pdf', 'Croquis_local.png'])}>
+            <div className="dz-t">Arrastra tus documentos o <b>haz clic aquí</b></div>
+            <div className="dz-sub">PDF o imágenes · el OCR extrae el texto automáticamente</div>
+            <div style={{ marginTop: 14 }} onClick={e => e.stopPropagation()}>
+              <button className="btn btn-secondary btn-sm" onClick={simulateDemo}>
                 <Icon name="file" />Usar documentos de ejemplo
               </button>
             </div>
@@ -240,9 +277,11 @@ function TramiteChat({ onSubmitted, goConsulta }: { onSubmitted: (folio: string,
                   <span className="fi"><Icon name={/\.(png|jpg|jpeg)$/i.test(f.name) ? 'image' : 'file'} /></span>
                   <div>
                     <div className="fn">{f.name}</div>
-                    <div className={'fs ' + (f.status === 'ok' ? 'ok' : 'proc')}>
+                    <div className={'fs ' + (f.status === 'ok' ? 'ok' : f.status === 'error' ? 'error' : 'proc')}>
                       {f.status === 'ok'
                         ? <><Icon name="check" style={{ width: 13, height: 13 }} />Texto extraído · Documento válido</>
+                        : f.status === 'error'
+                        ? <><Icon name="alert" style={{ width: 13, height: 13 }} />Error al procesar</>
                         : <><span className="mini-spin"></span>Procesando con OCR…</>}
                     </div>
                   </div>
@@ -253,7 +292,7 @@ function TramiteChat({ onSubmitted, goConsulta }: { onSubmitted: (folio: string,
           )}
           <div style={{ marginTop: 16 }}>
             <button className="btn btn-primary btn-block" disabled={!allOk} onClick={() => setStage('confirm')}>
-              {allOk ? 'Revisar datos y continuar' : 'Sube y procesa tus documentos'}
+              {allOk ? 'Revisar datos y continuar' : 'Procesando documentos…'}
             </button>
           </div>
         </div>
@@ -262,7 +301,10 @@ function TramiteChat({ onSubmitted, goConsulta }: { onSubmitted: (folio: string,
         <div style={{ padding: '4px 24px 18px' }}>
           <div className="section-label" style={{ marginBottom: 8 }}>Datos detectados — confirma antes de enviar</div>
           <div className="kvbox">
-            {Object.keys(SAMPLE_DATA).map(k => <div className="row" key={k}><span className="k">{k}</span><span className="v">{SAMPLE_DATA[k]}</span></div>)}
+            {Object.keys(Object.keys(extractedFields).length > 0 ? extractedFields : DEMO_FIELDS).map(k => {
+              const src = Object.keys(extractedFields).length > 0 ? extractedFields : DEMO_FIELDS;
+              return <div className="row" key={k}><span className="k">{k}</span><span className="v">{src[k]}</span></div>;
+            })}
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
             <button className="btn btn-primary" onClick={confirmSend}><Icon name="check" />Confirmar y enviar</button>

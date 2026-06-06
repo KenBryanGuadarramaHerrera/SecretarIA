@@ -99,24 +99,71 @@ function buildDraft(caso: InboxItem) {
   return `Ciudad de México, a ${today}.\n\nC. ${caso.name}\nP r e s e n t e.\n\nEn atención a su solicitud con folio ${caso.folio}, le compartimos la información correspondiente. Quedamos a sus órdenes para cualquier aclaración.\n\nA t e n t a m e n t e,\nSecretaría de Desarrollo Económico · Gobierno de la Ciudad de México`;
 }
 
+type AIAnalysis = { resumen: string; accion: string; prioridadTxt: string; riesgos?: string; plazo?: string } | null;
+
 function Caso({ caso, goBack, onResolve }: { caso: InboxItem; goBack: () => void; onResolve: (folio: string, kind: string) => void }) {
   const [draft, setDraft] = useState('');
-  const [flash, setFlash] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [draftMode, setDraftMode] = useState<'aprobar' | 'info' | 'rechazar' | 'general'>('general');
   const [copied, setCopied] = useState(false);
   const [resolved, setResolved] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis>(null);
+  const [analyzing, setAnalyzing] = useState(false);
   const d = caso.detail;
   const si = statusInfo(resolved ? 'resuelto' : caso.status);
   const pi = priorityInfo(caso.priority);
-  const DRAFT = buildDraft(caso);
+  const displayAnalysis = aiAnalysis ?? d;
 
-  function generate() {
-    setDraft(''); setFlash(true);
-    setTimeout(() => { setDraft(DRAFT); setFlash(false); }, 700);
+  async function generate(modo: typeof draftMode = draftMode) {
+    setGenerating(true);
+    setDraft('');
+    try {
+      const res = await fetch('/api/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ caso, modo }),
+      });
+      if (!res.ok || !res.body) throw new Error('Error al generar');
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let text = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        text += decoder.decode(value, { stream: true });
+        setDraft(text);
+      }
+    } catch {
+      setDraft(buildDraft(caso));
+    } finally {
+      setGenerating(false);
+    }
   }
+
+  async function reanalyze() {
+    setAnalyzing(true);
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          caso: {
+            folio: caso.folio, name: caso.name, type: caso.type,
+            category: caso.category, summary: caso.summary,
+            giro: caso.giro, area: caso.area, priority: caso.priority,
+            legalDays: caso.legalDays, legalUsed: caso.legalUsed,
+            docs: caso.detail.docs,
+          }
+        }),
+      });
+      const data = await res.json();
+      if (data.analysis) setAiAnalysis(data.analysis);
+    } catch { /* keep static */ }
+    finally { setAnalyzing(false); }
+  }
+
   function copy() {
-    const t = draft || DRAFT;
-    if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); });
-    else { setCopied(true); setTimeout(() => setCopied(false), 1800); }
+    if (navigator.clipboard && draft) navigator.clipboard.writeText(draft).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); });
   }
 
   const remaining = caso.legalDays - caso.legalUsed;
@@ -140,15 +187,27 @@ function Caso({ caso, goBack, onResolve }: { caso: InboxItem; goBack: () => void
       <div className="caso-grid">
         <div className="caso-col">
           <div className="card card-pad ia-card">
-            <span className="ia-badge"><Icon name="sparkle" style={{ width: 14, height: 14 }} />Análisis de Saptiva KAL</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <span className="ia-badge"><Icon name="sparkle" style={{ width: 14, height: 14 }} />Análisis de Saptiva KAL</span>
+              <button className="btn btn-outline-red btn-sm" style={{ marginLeft: 'auto' }} onClick={reanalyze} disabled={analyzing}>
+                <Icon name={analyzing ? 'clock' : 'sparkle'} style={{ width: 13, height: 13 }} />
+                {analyzing ? 'Analizando…' : 'Re-analizar'}
+              </button>
+            </div>
             <div className="ia-sec">
               <div className="ia-h">Resumen del caso</div>
-              <p>{d.resumen}</p>
+              <p>{displayAnalysis.resumen}</p>
             </div>
             <div className="ia-sec">
               <div className="ia-h">Acción recomendada</div>
-              <p>{d.accion}</p>
+              <p>{displayAnalysis.accion}</p>
             </div>
+            {aiAnalysis?.riesgos && (
+              <div className="ia-sec">
+                <div className="ia-h">Puntos de atención</div>
+                <p>{aiAnalysis.riesgos}</p>
+              </div>
+            )}
             <div className="ia-sec">
               <div className="ia-h">Datos extraídos</div>
               <dl className="ia-kv">
@@ -161,7 +220,7 @@ function Caso({ caso, goBack, onResolve }: { caso: InboxItem; goBack: () => void
             </div>
             <div className="ia-sec">
               <div className="ia-h">Prioridad sugerida</div>
-              <p style={{ fontWeight: 600 }}>{d.prioridadTxt}</p>
+              <p style={{ fontWeight: 600 }}>{displayAnalysis.prioridadTxt}</p>
             </div>
           </div>
 
@@ -196,13 +255,28 @@ function Caso({ caso, goBack, onResolve }: { caso: InboxItem; goBack: () => void
           <div className="card card-pad draft-card">
             <div className="draft-head">
               <span className="t">Borrador de respuesta</span>
-              <button className="btn btn-outline-red btn-sm" onClick={generate}><Icon name="sparkle" style={{ width: 14, height: 14 }} />Generar con IA</button>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {(['general', 'aprobar', 'info', 'rechazar'] as const).map(m => (
+                  <button key={m} className={'btn btn-sm ' + (draftMode === m ? 'btn-primary' : 'btn-secondary')}
+                    style={{ fontSize: 12, padding: '4px 10px' }}
+                    onClick={() => { setDraftMode(m); generate(m); }}>
+                    {m === 'general' ? 'Seguimiento' : m === 'aprobar' ? 'Aprobar' : m === 'info' ? 'Pedir info' : 'Rechazar'}
+                  </button>
+                ))}
+              </div>
             </div>
-            <textarea className={'draft-area ' + (flash ? 'flash' : '')}
-              placeholder={'Pulsa "Generar con IA" para redactar un borrador de respuesta oficial basado en el análisis…'}
-              value={draft} onChange={e => setDraft(e.target.value)} />
+            <div style={{ position: 'relative' }}>
+              <textarea className={'draft-area' + (generating ? ' flash' : '')}
+                placeholder={'Selecciona un tipo de respuesta arriba para generar el borrador con IA…'}
+                value={draft} onChange={e => setDraft(e.target.value)} />
+              {generating && (
+                <div style={{ position: 'absolute', bottom: 10, right: 12, fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span className="mini-spin"></span>Generando…
+                </div>
+              )}
+            </div>
             <div className="draft-actions">
-              <button className="btn btn-secondary btn-sm" onClick={copy}><Icon name={copied ? 'check' : 'copy'} style={{ width: 14, height: 14 }} />{copied ? 'Copiado' : 'Copiar'}</button>
+              <button className="btn btn-secondary btn-sm" onClick={copy} disabled={!draft}><Icon name={copied ? 'check' : 'copy'} style={{ width: 14, height: 14 }} />{copied ? 'Copiado' : 'Copiar'}</button>
               <button className="btn btn-secondary btn-sm"><Icon name="reassign" style={{ width: 14, height: 14 }} />Reasignar</button>
             </div>
           </div>
@@ -211,10 +285,10 @@ function Caso({ caso, goBack, onResolve }: { caso: InboxItem; goBack: () => void
             <div className="card card-pad">
               <div className="section-label">Resolución</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <button className="btn btn-primary btn-block" onClick={() => { setResolved(true); onResolve(caso.folio, 'aprobado'); }}><Icon name="check" />Aprobar y notificar</button>
+                <button className="btn btn-primary btn-block" onClick={() => { setResolved(true); onResolve(caso.folio, 'aprobado'); setDraftMode('aprobar'); generate('aprobar'); }}><Icon name="check" />Aprobar y notificar</button>
                 <div style={{ display: 'flex', gap: 10 }}>
-                  <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setResolved(true); onResolve(caso.folio, 'info'); }}><Icon name="mail" style={{ width: 15, height: 15 }} />Pedir info</button>
-                  <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setResolved(true); onResolve(caso.folio, 'rechazado'); }}><Icon name="x" style={{ width: 15, height: 15 }} />Rechazar</button>
+                  <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setResolved(true); onResolve(caso.folio, 'info'); setDraftMode('info'); generate('info'); }}><Icon name="mail" style={{ width: 15, height: 15 }} />Pedir info</button>
+                  <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setResolved(true); onResolve(caso.folio, 'rechazado'); setDraftMode('rechazar'); generate('rechazar'); }}><Icon name="x" style={{ width: 15, height: 15 }} />Rechazar</button>
                 </div>
               </div>
             </div>
