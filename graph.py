@@ -2,55 +2,24 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from state import ExpedienteState
 
-# Importar Nodos
-from nodes.validador import nodo_validador
-from nodes.interprete import nodo_interprete
-from nodes.auditor import nodo_auditor
-from nodes.redactor import nodo_redactor
-
-def validador_router(state: ExpedienteState):
-    """
-    Ruteo Condicional después de Validar.
-    Si el RFC es inválido o hay alertas, vamos directo a rechazo (Redactor).
-    Si todo está bien, continuamos con el Intérprete.
-    """
-    if not state.get("es_rfc_valido") or state.get("alertas_sat"):
-        return "redactor"
-    else:
-        return "interprete"
+# Importar Nodo
+from nodes.agent_viabilidad import nodo_agente_viabilidad
 
 # Construir el Grafo
 workflow = StateGraph(ExpedienteState)
 
 # Añadir los Nodos
-workflow.add_node("validador", nodo_validador)
-workflow.add_node("interprete", nodo_interprete)
-workflow.add_node("auditor", nodo_auditor)
-workflow.add_node("redactor", nodo_redactor)
+workflow.add_node("agent_viabilidad", nodo_agente_viabilidad)
 
 # Definir Aristas (Flujo)
-workflow.set_entry_point("validador")
+workflow.set_entry_point("agent_viabilidad")
+workflow.add_edge("agent_viabilidad", END)
 
-# Arista condicional desde el validador
-workflow.add_conditional_edges(
-    "validador",
-    validador_router,
-    {
-        "interprete": "interprete",
-        "redactor": "redactor"
-    }
-)
-
-# Flujo lineal normal
-workflow.add_edge("interprete", "auditor")
-workflow.add_edge("auditor", "redactor")
-workflow.add_edge("redactor", END)
-
-# Checkpointer para Man-in-the-Loop (guarda estado entre pausas)
+# Checkpointer para guardar estado
 memory = MemorySaver()
 
-# Compilar con interrupt_after en cada nodo (pausa DESPUÉS de que cada agente termina)
+# Compilar
 app = workflow.compile(
-    checkpointer=memory,
-    interrupt_after=["validador", "interprete", "auditor", "redactor"]
+    checkpointer=memory
 )
+

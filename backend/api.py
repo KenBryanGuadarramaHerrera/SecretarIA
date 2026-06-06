@@ -1,40 +1,49 @@
 """
-GOB-AGENTS Backend API
-FastAPI server that exposes the LangGraph multi-agent system.
-Supports SSE (Server-Sent Events) for real-time progressive agent logs.
+GOB-AGENTS Backend API for Reto 2 (Viabilidad de Negocios CDMX)
+FastAPI server that manages authentication (code verification) and conversational chat state.
 """
 import sys
 import os
-import json
-import time
-import threading
-import asyncio
-from datetime import datetime
-from typing import Optional
+import random
+import uuid
+import smtplib
+import requests
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from typing import Dict, List, Any, Optional
+from pydantic import BaseModel, EmailStr
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 
-# Agregar el directorio raiz al path para poder importar los modulos existentes
+# Cargar variables de entorno de .env o .env.local de forma manual antes de importar grafos/nodos
+def load_env():
+    for path in [".env", ".env.local"]:
+        # Subir un nivel si se está en subcarpeta o usar ruta relativa correcta
+        for p in [path, os.path.join(os.path.dirname(__file__), "..", path)]:
+            if os.path.exists(p):
+                with open(p, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            os.environ[k.strip()] = v.strip()
+
+load_env()
+
+# Agregar el directorio raíz al path para poder importar los módulos
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from graph import app as langgraph_app
 from state import ExpedienteState
-from tools.logger import agent_logger
 
-# ════════════════════════════════════════════════════════════
-# FastAPI App
-# ════════════════════════════════════════════════════════════
-
-api = FastAPI(
-    title="GOB-AGENTS API",
-    description="API del Sistema Multiagente para SEDECO CDMX",
-    version="1.0.0"
+app_api = FastAPI(
+    title="SEDECO CDMX - Viabilidad de Negocios API",
+    description="Backend para el análisis de viabilidad con captura conversacional",
+    version="2.0.0"
 )
 
-api.add_middleware(
+app_api.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
@@ -43,343 +52,450 @@ api.add_middleware(
 )
 
 # ════════════════════════════════════════════════════════════
-# Estado global de la sesion
+# Utilidad de Envío de Correos Reales
 # ════════════════════════════════════════════════════════════
+def send_real_email(to_email: str, code: str):
+    resend_key = os.getenv("RESEND_API_KEY")
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
 
-class SessionState:
-    def __init__(self):
-        self.config = None
-        self.initial_state = None
-        self.is_running = False
-        self.is_finished = False
-        self.decisiones_mitl = []
-
-session = SessionState()
-
-# ════════════════════════════════════════════════════════════
-# Modelos Pydantic para la API
-# ════════════════════════════════════════════════════════════
-
-class ExpedienteInput(BaseModel):
-    folio: str
-    rfc: str
-    curp: str
-    nombre: str
-    score_ml: float = 0.5
-    alcaldia: str = "Iztapalapa"
-    marginacion: str = "Alta"
-
-class EditInput(BaseModel):
-    campo: str
-    valor: str
-
-# ════════════════════════════════════════════════════════════
-# Funciones auxiliares
-# ════════════════════════════════════════════════════════════
-
-def _get_graph_state():
-    """Obtiene el estado actual del grafo LangGraph."""
-    if session.config is None:
-        return None
-    try:
-        graph_state = langgraph_app.get_state(session.config)
-        return graph_state
-    except Exception:
-        return None
-
-def _state_to_dict(state_values) -> dict:
-    """Convierte el estado de LangGraph a un diccionario serializable."""
-    if state_values is None:
-        return {}
-    result = dict(state_values)
-    # Asegurar que todos los valores sean serializables
-    for key, value in result.items():
-        if isinstance(value, (list, dict, str, int, float, bool, type(None))):
-            continue
-        result[key] = str(value)
-    return result
-
-def _run_agent_in_thread(input_data):
-    """Ejecuta el siguiente paso del grafo en un thread separado."""
-    session.is_running = True
-    try:
-        langgraph_app.invoke(input_data, session.config)
-    except Exception as e:
-        agent_logger.log(f"  [ERROR] {str(e)}", agent="Sistema", log_type="fallo", delay=0)
-    finally:
-        session.is_running = False
-
-# ════════════════════════════════════════════════════════════
-# Endpoints
-# ════════════════════════════════════════════════════════════
-
-@api.post("/api/expediente/iniciar")
-def iniciar_expediente(data: ExpedienteInput):
-    """Inicia la evaluacion de un nuevo expediente."""
-    # Limpiar estado anterior
-    agent_logger.set_session(data.folio)
-    session.decisiones_mitl = []
-    session.is_finished = False
-    
-    initial_state = ExpedienteState(
-        folio=data.folio,
-        rfc=data.rfc,
-        curp=data.curp,
-        nombre=data.nombre,
-        score_ml=data.score_ml,
-        datos_geograficos={
-            "alcaldia": data.alcaldia,
-            "marginacion": data.marginacion
-        },
-        es_rfc_valido=None,
-        alertas_sat=[],
-        analisis_financiero=None,
-        es_aprobado_auditoria=None,
-        observaciones_auditoria=[],
-        resolucion_final=None,
-        minuta_interna=None,
-        carta_ciudadano=None,
-        linea_tiempo=[]
-    )
-    
-    session.config = {"configurable": {"thread_id": data.folio}}
-    session.initial_state = initial_state
-    
-    # Ejecutar el primer nodo (Validador) en un thread
-    thread = threading.Thread(
-        target=_run_agent_in_thread,
-        args=(initial_state,)
-    )
-    thread.start()
-    
-    return {"status": "iniciado", "folio": data.folio}
-
-
-@api.get("/api/expediente/estado")
-def obtener_estado():
-    """Devuelve el estado actual del expediente y la informacion de control."""
-    graph_state = _get_graph_state()
-    if graph_state is None:
-        raise HTTPException(status_code=404, detail="No hay expediente activo")
-    
-    state_values = _state_to_dict(graph_state.values)
-    next_nodes = list(graph_state.next) if graph_state.next else []
-    
-    is_finished = len(next_nodes) == 0 and not session.is_running
-    session.is_finished = is_finished
-    
-    return {
-        "estado": state_values,
-        "siguiente_nodo": next_nodes[0] if next_nodes else None,
-        "nodos_pendientes": next_nodes,
-        "en_ejecucion": session.is_running,
-        "terminado": is_finished,
-        "decisiones_mitl": session.decisiones_mitl
-    }
-
-
-@api.post("/api/expediente/continuar")
-def continuar_expediente():
-    """El funcionario aprueba y ejecuta el siguiente nodo."""
-    graph_state = _get_graph_state()
-    if graph_state is None:
-        raise HTTPException(status_code=404, detail="No hay expediente activo")
-    
-    next_nodes = list(graph_state.next) if graph_state.next else []
-    if not next_nodes:
-        raise HTTPException(status_code=400, detail="El proceso ya finalizo")
-    
-    if session.is_running:
-        raise HTTPException(status_code=400, detail="Un agente esta en ejecucion")
-    
-    # Registrar decision MITL
-    agente_anterior = "N/A"
-    linea_tiempo = graph_state.values.get("linea_tiempo", [])
-    if linea_tiempo:
-        agente_anterior = linea_tiempo[-1].get("agente", "N/A")
-    
-    session.decisiones_mitl.append({
-        "despues_de": agente_anterior,
-        "siguiente_nodo": next_nodes[0],
-        "decision": "continuar",
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "nota": None
-    })
-    
-    # Ejecutar siguiente nodo en thread
-    thread = threading.Thread(
-        target=_run_agent_in_thread,
-        args=(None,)
-    )
-    thread.start()
-    
-    return {"status": "continuando", "siguiente": next_nodes[0]}
-
-
-@api.post("/api/expediente/rechazar")
-def rechazar_expediente():
-    """El funcionario fuerza un rechazo inmediato."""
-    graph_state = _get_graph_state()
-    if graph_state is None:
-        raise HTTPException(status_code=404, detail="No hay expediente activo")
-    
-    if session.is_running:
-        raise HTTPException(status_code=400, detail="Un agente esta en ejecucion")
-    
-    agente_anterior = "N/A"
-    linea_tiempo = graph_state.values.get("linea_tiempo", [])
-    if linea_tiempo:
-        agente_anterior = linea_tiempo[-1].get("agente", "N/A")
-    
-    session.decisiones_mitl.append({
-        "despues_de": agente_anterior,
-        "siguiente_nodo": "redactor",
-        "decision": "rechazar",
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "nota": "Rechazo forzado por el funcionario supervisor."
-    })
-    
-    # Forzar rechazo
-    langgraph_app.update_state(
-        session.config,
-        {
-            "es_rfc_valido": False,
-            "alertas_sat": ["Rechazado manualmente por el funcionario supervisor."]
-        }
-    )
-    
-    thread = threading.Thread(
-        target=_run_agent_in_thread,
-        args=(None,)
-    )
-    thread.start()
-    
-    return {"status": "rechazando"}
-
-
-@api.post("/api/expediente/editar")
-def editar_expediente(data: EditInput):
-    """El funcionario modifica un campo del estado."""
-    graph_state = _get_graph_state()
-    if graph_state is None:
-        raise HTTPException(status_code=404, detail="No hay expediente activo")
-    
-    campos_validos = ["rfc", "curp", "nombre", "score_ml"]
-    if data.campo not in campos_validos:
-        raise HTTPException(status_code=400, detail=f"Campo invalido. Validos: {campos_validos}")
-    
-    valor = data.valor
-    if data.campo == "score_ml":
+    # Opción 1: Resend API (Si existe la API Key)
+    if resend_key:
         try:
-            valor = float(valor)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Score ML debe ser un numero decimal")
-    
-    langgraph_app.update_state(session.config, {data.campo: valor})
-    
-    return {"status": "editado", "campo": data.campo, "nuevo_valor": valor}
-
-
-@api.get("/api/stream")
-async def stream_logs():
-    """
-    Server-Sent Events endpoint.
-    Envia los logs de los agentes en tiempo real al frontend.
-    """
-    async def event_generator():
-        last_timestamp = 0
-        idle_count = 0
-        
-        while True:
-            messages = agent_logger.get_new_messages(since=last_timestamp)
-            
-            if messages:
-                idle_count = 0
-                for msg in messages:
-                    last_timestamp = msg["timestamp"]
-                    event_data = json.dumps({
-                        "msg": msg["msg"],
-                        "agent": msg["agent"],
-                        "type": msg["type"],
-                        "timestamp": msg["timestamp"]
-                    }, ensure_ascii=False)
-                    yield f"data: {event_data}\n\n"
+            headers = {
+                "Authorization": f"Bearer {resend_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "from": "SecretarIA CDMX <onboarding@resend.dev>",
+                "to": to_email,
+                "subject": f"Codigo de acceso SecretarIA: {code}",
+                "html": f"<p>Tu codigo de verificacion para ingresar a SecretarIA es: <strong>{code}</strong></p>"
+            }
+            r = requests.post("https://api.resend.com/emails", json=payload, headers=headers)
+            if r.status_code == 200 or r.status_code == 201:
+                print(f"[RESEND] Correo enviado a {to_email}")
+                return
             else:
-                idle_count += 1
-                
-                # Enviar heartbeat para mantener la conexion
-                if idle_count % 10 == 0:
-                    yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
-                
-                # Verificar si el proceso termino
-                graph_state = _get_graph_state()
-                if graph_state and not session.is_running:
-                    next_nodes = list(graph_state.next) if graph_state.next else []
-                    if next_nodes:
-                        # Hay un punto de control MITL
-                        yield f"data: {json.dumps({'type': 'control_point', 'next_node': next_nodes[0]})}\n\n"
-                        # Esperar decision del funcionario
-                        while True:
-                            await asyncio.sleep(0.5)
-                            new_msgs = agent_logger.get_new_messages(since=last_timestamp)
-                            if new_msgs:
-                                break
-                            # Verificar si se tomo una decision
-                            gs = _get_graph_state()
-                            if gs and session.is_running:
-                                break
-                            if gs and not list(gs.next or []):
-                                break
-                        continue
-                    elif not next_nodes and not session.is_running:
-                        # Proceso terminado
-                        state_values = _state_to_dict(graph_state.values)
-                        yield f"data: {json.dumps({'type': 'finished', 'state': state_values}, ensure_ascii=False)}\n\n"
-                        return
-            
-            await asyncio.sleep(0.3)
-    
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
+                print(f"[RESEND ERROR] Status {r.status_code}: {r.text}")
+        except Exception as e:
+            print(f"[RESEND EXCEPTION] {e}")
+
+    # Opción 2: SMTP (Gmail / Custom)
+    if smtp_user and smtp_password:
+        smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+        smtp_port = int(os.getenv("SMTP_PORT", "587"))
+        
+        msg = MIMEMultipart()
+        msg['From'] = smtp_user
+        msg['To'] = to_email
+        msg['Subject'] = f"Codigo de acceso SecretarIA CDMX: {code}"
+        
+        body = f"Tu codigo de verificacion para ingresar a SecretarIA es: {code}"
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+        
+        try:
+            server = smtplib.SMTP(smtp_host, smtp_port)
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.sendmail(smtp_user, to_email, msg.as_string())
+            server.quit()
+            print(f"[SMTP] Correo enviado a {to_email}")
+            return
+        except Exception as e:
+            print(f"[SMTP ERROR] {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Fallo al enviar correo por SMTP: {str(e)}"
+            )
+
+    # Si no hay credenciales, lanzar error explicativo para el usuario
+    raise HTTPException(
+        status_code=500,
+        detail="Servicio de correo no configurado. Agrega RESEND_API_KEY o SMTP_USER y SMTP_PASSWORD a tu archivo .env.local"
     )
 
+# ════════════════════════════════════════════════════════════
+# Almacenamiento en Base de Datos (SQLite + SQLAlchemy)
+# ════════════════════════════════════════════════════════════
+from sqlalchemy import select
+from backend.db import async_session_maker
+from backend.models import User
 
-@api.get("/api/expediente/bitacora")
-def obtener_bitacora():
-    """Retorna la bitacora completa en formato JSON."""
-    graph_state = _get_graph_state()
-    if graph_state is None:
-        raise HTTPException(status_code=404, detail="No hay expediente activo")
+# Registro temporal de códigos OTP en memoria (no requiere persistencia larga)
+verification_codes: Dict[str, str] = {}
+
+# Mapeo temporal de hilos de conversación en memoria
+user_threads: Dict[str, str] = {}
+
+# Hash bcrypt precalculado para contraseñas inactivas ("dummypassword")
+DUMMY_PASSWORD_HASH = "$bcrypt$$2b$12$K.FpQYkpe/O7P9FkC6Rpqex3x5gYJ9nK.V5aMskN7R0XF8s9b.tWy"
+
+async def get_db_user_by_email(email: str) -> Optional[User]:
+    email_clean = email.strip().lower()
+    async with async_session_maker() as session:
+        result = await session.execute(select(User).where(User.email == email_clean))
+        return result.scalars().first()
+
+async def create_db_user(nombre: str, email: str, rfc: str) -> User:
+    email_clean = email.strip().lower()
+    async with async_session_maker() as session:
+        existing = await get_db_user_by_email(email_clean)
+        if existing:
+            return existing
+            
+        new_user = User(
+            id=uuid.uuid4(),
+            email=email_clean,
+            nombre=nombre,
+            rfc=rfc,
+            hashed_password=DUMMY_PASSWORD_HASH,
+            is_active=True,
+            is_verified=False,
+            is_superuser=False
+        )
+        session.add(new_user)
+        await session.commit()
+        return new_user
+
+async def mark_db_user_verified(email: str):
+    email_clean = email.strip().lower()
+    async with async_session_maker() as session:
+        result = await session.execute(select(User).where(User.email == email_clean))
+        db_user = result.scalars().first()
+        if db_user:
+            db_user.is_verified = True
+            await session.commit()
+
+# Crear tablas al iniciar la aplicación
+@app_api.on_event("startup")
+async def on_startup():
+    from backend.db import Base, engine
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print("[DB] Base de datos SQLite inicializada correctamente.")
+
+# ════════════════════════════════════════════════════════════
+# Modelos Pydantic
+# ════════════════════════════════════════════════════════════
+class SendCodeRequest(BaseModel):
+    nombre: str
+    email: str
+    rfc: str
+
+class LoginRequest(BaseModel):
+    email: str
+
+class VerifyCodeRequest(BaseModel):
+    email: str
+    code: str
+
+class ChatMessageRequest(BaseModel):
+    email: str
+    message: str
+
+class UpdateDetailsRequest(BaseModel):
+    email: str
+    business_details: Dict[str, Any]
+
+# ════════════════════════════════════════════════════════════
+# Endpoints de Autenticación
+# ════════════════════════════════════════════════════════════
+
+@app_api.post("/api/auth/send-code")
+async def send_code(req: SendCodeRequest):
+    """
+    Genera un código de verificación de 6 dígitos y lo envía al correo.
+    Si el usuario ya estaba verificado previamente, retorna estado 'already_verified'.
+    """
+    email_clean = req.email.strip().lower()
     
-    state_values = _state_to_dict(graph_state.values)
+    # Si el usuario ya existe y está verificado, sugerir iniciar sesión
+    db_user = await get_db_user_by_email(email_clean)
+    if db_user and db_user.is_verified:
+        return {
+            "status": "already_verified",
+            "message": "Este correo ya está registrado y verificado. Por favor inicia sesión.",
+            "user": {
+                "nombre": db_user.nombre,
+                "email": db_user.email,
+                "rfc": db_user.rfc
+            }
+        }
+
+    # Generar código de 6 dígitos
+    code = f"{random.randint(100000, 999999)}"
+    verification_codes[email_clean] = code
     
+    # Crear o recuperar registro del usuario
+    await create_db_user(req.nombre, req.email, req.rfc)
+
+    # Intentar enviar el correo
+    send_real_email(email_clean, code)
+
     return {
-        "expediente": {
-            "folio": state_values.get("folio"),
-            "rfc": state_values.get("rfc"),
-            "curp": state_values.get("curp"),
-            "nombre": state_values.get("nombre"),
-            "score_ml": state_values.get("score_ml"),
-            "resolucion_final": state_values.get("resolucion_final"),
-        },
-        "linea_tiempo": state_values.get("linea_tiempo", []),
-        "decisiones_mitl": session.decisiones_mitl,
-        "arbol_decisiones": {
-            "rfc_valido": state_values.get("es_rfc_valido"),
-            "alertas_sat": state_values.get("alertas_sat", []),
-            "es_aprobado_auditoria": state_values.get("es_aprobado_auditoria"),
-            "resolucion_final": state_values.get("resolucion_final"),
-        },
-        "carta_ciudadano": state_values.get("carta_ciudadano"),
+        "status": "success",
+        "message": f"Código enviado al correo {req.email}"
     }
 
+@app_api.post("/api/auth/login")
+async def login(req: LoginRequest):
+    """
+    Inicia sesión directamente con un correo electrónico ya verificado, sin requerir código.
+    """
+    email_clean = req.email.strip().lower()
+    db_user = await get_db_user_by_email(email_clean)
+    
+    if db_user and db_user.is_verified:
+        # Asegurar thread_id
+        if email_clean not in user_threads:
+            user_threads[email_clean] = f"thread-{uuid.uuid4().hex[:8]}"
+        return {
+            "status": "success",
+            "message": "Sesión iniciada con éxito",
+            "user": {
+                "nombre": db_user.nombre,
+                "email": db_user.email,
+                "rfc": db_user.rfc
+            }
+        }
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Tu correo no está registrado o verificado. Por favor selecciona la pestaña 'Crear Cuenta'."
+        )
+
+@app_api.post("/api/auth/verify-code")
+async def verify_code(req: VerifyCodeRequest):
+    """
+    Verifica el código ingresado. Si es correcto, activa la sesión del usuario.
+    """
+    email_key = req.email.strip().lower()
+    if email_key not in verification_codes:
+        raise HTTPException(status_code=404, detail="No se solicitó ningún código para este correo")
+        
+    expected_code = verification_codes[email_key]
+    if req.code.strip() != expected_code:
+        raise HTTPException(status_code=400, detail="Código de verificación incorrecto")
+
+    # Marcar sesión como verificada
+    await mark_db_user_verified(email_key)
+    db_user = await get_db_user_by_email(email_key)
+    
+    # Crear thread_id único para la conversación
+    user_threads[email_key] = f"thread-{uuid.uuid4().hex[:8]}"
+
+    # Limpiar código
+    del verification_codes[email_key]
+
+    return {
+        "status": "success",
+        "user": {
+            "nombre": db_user.nombre if db_user else "Usuario",
+            "email": email_key,
+            "rfc": db_user.rfc if db_user else ""
+        }
+    }
+
+# ════════════════════════════════════════════════════════════
+# Endpoints del Agente Conversacional (LangGraph)
+# ════════════════════════════════════════════════════════════
+
+@app_api.post("/api/chat")
+async def chat_with_agent(req: ChatMessageRequest):
+    """
+    Envía un mensaje al agente conversacional y retorna el estado actualizado.
+    """
+    email_key = req.email.strip().lower()
+    db_user = await get_db_user_by_email(email_key)
+    
+    if not db_user or not db_user.is_verified:
+        raise HTTPException(status_code=401, detail="Usuario no autenticado o sesión expirada")
+
+    thread_id = user_threads.get(email_key)
+    if not thread_id:
+        thread_id = f"thread-{uuid.uuid4().hex[:8]}"
+        user_threads[email_key] = thread_id
+
+    config = {"configurable": {"thread_id": thread_id}}
+
+    # Obtener estado actual del grafo (si existe)
+    try:
+        graph_state = langgraph_app.get_state(config)
+        current_values = graph_state.values if (graph_state and graph_state.values) else {}
+    except Exception:
+        current_values = {}
+
+    # Inicializar campos si el estado es nuevo
+    messages = current_values.get("messages", [])
+    business_details = current_values.get("business_details", {
+        "titulo": None,
+        "giro": None,
+        "descripcion": None,
+        "ubicacion": None,
+        "productos_servicios": None,
+        "cantidad_trabajadores": None,
+        "extension_m2": None
+    })
+    errors = current_values.get("errors", [])
+    validated = current_values.get("validated", False)
+
+    # Agregar nuevo mensaje del usuario
+    messages.append({"role": "user", "content": req.message})
+
+    # Crear el estado para invocar el grafo
+    input_state = ExpedienteState(
+        messages=messages,
+        business_details=business_details,
+        errors=errors,
+        validated=validated
+    )
+
+    # Invocar el grafo
+    try:
+        langgraph_app.invoke(input_state, config)
+        # Obtener el estado actualizado tras la ejecución
+        updated_state = langgraph_app.get_state(config).values
+    except Exception as e:
+        print(f"Error invocado en LangGraph: {e}")
+        # En caso de error de Ollama u otro, responder elegantemente
+        fallback_msg = "Disculpa, he tenido un problema temporal al procesar tu respuesta. ¿Podrías repetirla detallando qué negocio quieres poner?"
+        messages.append({"role": "assistant", "content": fallback_msg})
+        return {
+            "messages": messages,
+            "business_details": business_details,
+            "errors": ["Error de procesamiento temporal en el modelo de lenguaje."],
+            "validated": False
+        }
+
+    return {
+        "messages": updated_state.get("messages", []),
+        "business_details": updated_state.get("business_details", {}),
+        "errors": updated_state.get("errors", []),
+        "validated": updated_state.get("validated", False)
+    }
+
+@app_api.post("/api/chat/update-details")
+async def update_details(req: UpdateDetailsRequest):
+    """
+    Permite actualizar manualmente los detalles extraídos del negocio en el estado del grafo.
+    """
+    email_key = req.email.strip().lower()
+    db_user = await get_db_user_by_email(email_key)
+    if not db_user or not db_user.is_verified:
+        raise HTTPException(status_code=401, detail="Usuario no autenticado")
+
+    thread_id = user_threads.get(email_key)
+    if not thread_id:
+        thread_id = f"thread-{uuid.uuid4().hex[:8]}"
+        user_threads[email_key] = thread_id
+
+    config = {"configurable": {"thread_id": thread_id}}
+
+    try:
+        errors = []
+        details = req.business_details
+        
+        # Validar trabajadores
+        workers = details.get("cantidad_trabajadores")
+        if workers is not None and workers != "":
+            try:
+                workers_int = int(workers)
+                if workers_int <= 0 or workers_int > 500:
+                    errors.append("La cantidad de trabajadores debe ser una cifra realista (entre 1 y 500).")
+            except (ValueError, TypeError):
+                errors.append("La cantidad de trabajadores debe ser un número entero válido.")
+
+        # Validar extensión
+        m2 = details.get("extension_m2")
+        if m2 is not None and m2 != "":
+            try:
+                m2_int = int(m2)
+                if m2_int < 2 or m2_int > 5000:
+                    errors.append("La extensión en metros cuadrados (m2) debe ser una cifra realista (entre 2 y 5000 m2).")
+            except (ValueError, TypeError):
+                errors.append("La extensión en metros cuadrados debe ser un número entero válido.")
+
+        # Validar si todo está completo y correcto
+        validated = False
+        if (details.get("titulo") and details.get("giro") and details.get("descripcion") and 
+            details.get("ubicacion") and details.get("productos_servicios") and 
+            workers is not None and workers != "" and m2 is not None and m2 != "" and not errors):
+            validated = True
+
+        # Actualizar el grafo
+        langgraph_app.update_state(config, {
+            "business_details": details,
+            "errors": list(set(errors)),
+            "validated": validated
+        })
+
+        # Retornar el estado actualizado
+        updated_state = langgraph_app.get_state(config).values
+        return {
+            "messages": updated_state.get("messages", []),
+            "business_details": updated_state.get("business_details", {}),
+            "errors": updated_state.get("errors", []),
+            "validated": updated_state.get("validated", False)
+        }
+    except Exception as e:
+        print(f"Error actualizando detalles en LangGraph: {e}")
+        raise HTTPException(status_code=500, detail=f"Error al actualizar el estado: {str(e)}")
+
+@app_api.get("/api/chat/state")
+async def get_chat_state(email: str):
+    """
+    Retorna el estado actual de la conversación y detalles capturados.
+    """
+    email_key = email.strip().lower()
+    db_user = await get_db_user_by_email(email_key)
+    
+    if not db_user or not db_user.is_verified:
+        raise HTTPException(status_code=401, detail="Usuario no autenticado")
+
+    thread_id = user_threads.get(email_key)
+    if not thread_id:
+        return {
+            "messages": [],
+            "business_details": {
+                "titulo": None,
+                "giro": None,
+                "descripcion": None,
+                "ubicacion": None,
+                "productos_servicios": None,
+                "cantidad_trabajadores": None,
+                "extension_m2": None
+            },
+            "errors": [],
+            "validated": False
+        }
+
+    config = {"configurable": {"thread_id": thread_id}}
+    try:
+        graph_state = langgraph_app.get_state(config)
+        values = graph_state.values if (graph_state and graph_state.values) else {}
+        return {
+            "messages": values.get("messages", []),
+            "business_details": values.get("business_details", {}),
+            "errors": values.get("errors", []),
+            "validated": values.get("validated", False)
+        }
+    except Exception:
+        return {
+            "messages": [],
+            "business_details": {
+                "titulo": None,
+                "giro": None,
+                "descripcion": None,
+                "ubicacion": None,
+                "productos_servicios": None,
+                "cantidad_trabajadores": None,
+                "extension_m2": None
+            },
+            "errors": [],
+            "validated": False
+        }
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(api, host="0.0.0.0", port=8000)
+    uvicorn.run(app_api, host="0.0.0.0", port=8000)

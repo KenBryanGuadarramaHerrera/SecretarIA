@@ -14,8 +14,8 @@ export default function Header() {
             <path d="M 60,60 L 60,80 L 70,80 L 70,70 L 80,70 L 80,60 Z" fill="currentColor" />
           </svg>
           <div>
-            <h1>GOB-AGENTS</h1>
-            <span>Sistema Multiagente con Supervisión Humana Obligatoria</span>
+            <h1>SecretarIA</h1>
+            <span>Asistente Inteligente para la Viabilidad de Negocios CDMX</span>
           </div>
         </div>
         <span className="header-badge">SEDECO CDMX</span>
@@ -24,3 +24,4 @@ export default function Header() {
     </header>
   );
 }
+
