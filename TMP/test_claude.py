@@ -2,7 +2,7 @@ import os
 import requests
 import json
 
-api_key = "ANTHROPIC_API_KEY_REMOVED"
+api_key = os.environ.get("ANTHROPIC_API_KEY", "")
 
 headers = {
     "x-api-key": api_key,
