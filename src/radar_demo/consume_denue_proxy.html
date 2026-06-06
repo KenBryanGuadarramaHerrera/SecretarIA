@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Radar CDMX | Consumo API DENUE Proxy</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --cdmx-primary:#9F2241;
+      --cdmx-secondary:#691C32;
+      --cdmx-gold:#BC955C;
+      --cdmx-bg:#F6F1EB;
+    }
+    body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--cdmx-bg);color:var(--cdmx-secondary)}
+    .glass{background:rgba(255,255,255,.9);backdrop-filter:blur(14px);border:1px solid rgba(159,34,65,.1);box-shadow:0 18px 50px rgba(105,28,50,.08)}
+    .panel{background:white;border:1px solid rgba(159,34,65,.08);box-shadow:0 10px 30px rgba(105,28,50,.06)}
+    .label{font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:900;color:rgba(159,34,65,.62)}
+    .input{width:100%;border:1px solid rgba(159,34,65,.18);border-radius:16px;padding:.75rem 1rem;font-weight:800;color:var(--cdmx-secondary);background:white}
+    .input:focus{outline:none;border-color:var(--cdmx-primary);box-shadow:0 0 0 3px rgba(159,34,65,.12)}
+    #map{height:520px;border-radius:28px;border:1px solid rgba(159,34,65,.14);overflow:hidden;z-index:1}
+    .badge{display:inline-flex;align-items:center;gap:.35rem;border-radius:999px;padding:.35rem .7rem;font-size:12px;font-weight:900}
+    .loading{animation:pulse 1s infinite alternate}@keyframes pulse{from{opacity:.45}to{opacity:1}}
+  </style>
+</head>
+<body class="min-h-screen">
+  <nav class="bg-[#9F2241] text-white sticky top-0 z-50 shadow-lg">
+    <div class="max-w-7xl mx-auto px-5 md:px-8 py-4 flex items-center justify-between gap-4">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-black tracking-tight">Radar CDMX</h1>
+        <p class="text-xs font-bold uppercase tracking-[.2em] text-white/65">Cliente HTML para API Proxy DENUE / INEGI</p>
+      </div>
+      <span id="apiStatus" class="badge bg-white/10 text-white">API lista</span>
+    </div>
+  </nav>
+
+  <main class="max-w-7xl mx-auto px-5 md:px-8 py-8 grid lg:grid-cols-[390px_1fr] gap-7">
+    <aside class="glass rounded-[2rem] p-6 h-fit lg:sticky lg:top-28">
+      <h2 class="text-xl font-black text-[#9F2241] mb-2">Consulta DENUE</h2>
+      <p class="text-sm font-semibold text-[#691C32]/70 mb-6">
+        Este frontend consume tu archivo <b>denue_proxy.php</b>. El token queda oculto en PHP y el navegador solo consulta tu proxy.
+      </p>
+
+      <div class="space-y-4">
+        <label class="block">
+          <span class="label">URL del proxy PHP</span>
+          <input id="proxyUrl" class="input mt-2" value="/api/denue_proxy.php" />
+          <small class="block mt-1 text-xs font-bold text-[#9F2241]/50">Ejemplo: /api/denue_proxy.php o https://itzamna.tech/api/denue_proxy.php</small>
+        </label>
+
+        <label class="block">
+          <span class="label">Giro / condición de búsqueda</span>
+          <input id="condition" class="input mt-2" value="cafeteria" placeholder="cafeteria, restaurante, farmacia..." />
+        </label>
+
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block">
+            <span class="label">Latitud</span>
+            <input id="lat" class="input mt-2" type="number" step="0.000001" value="19.4194" />
+          </label>
+          <label class="block">
+            <span class="label">Longitud</span>
+            <input id="lng" class="input mt-2" type="number" step="0.000001" value="-99.1621" />
+          </label>
+        </div>
+
+        <label class="block">
+          <span class="label">Radio de análisis: <b id="radiusText">800</b> m</span>
+          <input id="radius" type="range" min="100" max="5000" step="100" value="800" class="w-full accent-[#9F2241] mt-3" />
+        </label>
+
+        <div class="grid grid-cols-2 gap-3">
+          <button id="btnUseLocation" class="rounded-2xl border border-[#9F2241]/20 py-3 font-black text-[#9F2241] hover:bg-[#9F2241]/5">Usar mi ubicación</button>
+          <button id="btnDemo" class="rounded-2xl border border-[#9F2241]/20 py-3 font-black text-[#9F2241] hover:bg-[#9F2241]/5">Roma Norte</button>
+        </div>
+
+        <button id="btnSearch" class="w-full rounded-2xl bg-[#9F2241] text-white py-4 font-black shadow-lg hover:scale-[1.01] transition-transform">
+          Consultar API DENUE
+        </button>
+      </div>
+
+      <div class="mt-6 panel rounded-3xl p-4">
+        <p class="label">Endpoint generado</p>
+        <code id="endpointPreview" class="block mt-2 text-xs break-all bg-[#F6F1EB] rounded-2xl p-3 text-[#691C32] font-bold"></code>
+      </div>
+    </aside>
+
+    <section class="space-y-6">
+      <div class="grid md:grid-cols-4 gap-4">
+        <div class="panel rounded-3xl p-5"><p class="label">Resultados</p><p id="totalResults" class="text-3xl font-black text-[#9F2241]">0</p></div>
+        <div class="panel rounded-3xl p-5"><p class="label">Competencia</p><p id="competitionLevel" class="text-3xl font-black text-[#BC955C]">—</p></div>
+        <div class="panel rounded-3xl p-5"><p class="label">Radio</p><p id="radiusCard" class="text-3xl font-black text-[#691C32]">800m</p></div>
+        <div class="panel rounded-3xl p-5"><p class="label">Centro</p><p id="centerCard" class="text-sm font-black text-[#691C32] mt-2">19.4194, -99.1621</p></div>
+      </div>
+
+      <div class="panel rounded-[2rem] p-4 md:p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+          <div>
+            <h3 class="font-black text-xl text-[#9F2241]">Mapa de unidades económicas</h3>
+            <p class="text-sm font-semibold text-[#691C32]/60">Los puntos se cargan desde la respuesta JSON de tu proxy PHP.</p>
+          </div>
+          <button id="btnDownload" class="rounded-2xl bg-[#BC955C] text-[#691C32] px-5 py-3 font-black disabled:opacity-40" disabled>Descargar JSON</button>
+        </div>
+        <div id="map"></div>
+      </div>
+
+      <div class="panel rounded-[2rem] p-5 md:p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+          <div>
+            <h3 class="font-black text-xl text-[#9F2241]">Tabla de resultados</h3>
+            <p id="tableHelp" class="text-sm font-semibold text-[#691C32]/60">Realiza una consulta para ver los establecimientos encontrados.</p>
+          </div>
+          <input id="filter" class="input md:max-w-xs" placeholder="Filtrar resultados..." />
+        </div>
+        <div class="overflow-auto max-h-[520px] rounded-2xl border border-[#9F2241]/10">
+          <table class="w-full text-sm text-left">
+            <thead class="bg-[#F6F1EB] sticky top-0 z-10">
+              <tr class="text-[#9F2241] uppercase text-[11px] tracking-wider">
+                <th class="p-3">Nombre</th>
+                <th class="p-3">Clase / actividad</th>
+                <th class="p-3">Dirección</th>
+                <th class="p-3">Personal</th>
+              </tr>
+            </thead>
+            <tbody id="resultsTable" class="divide-y divide-[#9F2241]/10"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel rounded-[2rem] p-5 md:p-6">
+        <h3 class="font-black text-xl text-[#9F2241] mb-3">Respuesta cruda de la API</h3>
+        <pre id="rawJson" class="bg-[#1f1020] text-white rounded-2xl p-4 overflow-auto max-h-[360px] text-xs">// Aquí aparecerá el JSON devuelto por denue_proxy.php</pre>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let lastData = [];
+    let map, markersLayer, radiusLayer, centerMarker;
+
+    const els = {
+      proxyUrl: $('proxyUrl'), condition: $('condition'), lat: $('lat'), lng: $('lng'), radius: $('radius'),
+      radiusText: $('radiusText'), endpointPreview: $('endpointPreview'), btnSearch: $('btnSearch'),
+      totalResults: $('totalResults'), competitionLevel: $('competitionLevel'), radiusCard: $('radiusCard'), centerCard: $('centerCard'),
+      resultsTable: $('resultsTable'), rawJson: $('rawJson'), apiStatus: $('apiStatus'), filter: $('filter'), btnDownload: $('btnDownload')
+    };
+
+    function buildEndpoint(){
+      const base = els.proxyUrl.value.trim() || '/api/denue_proxy.php';
+      const url = new URL(base, window.location.origin);
+      url.searchParams.set('condition', els.condition.value.trim());
+      url.searchParams.set('lat', Number(els.lat.value));
+      url.searchParams.set('lng', Number(els.lng.value));
+      url.searchParams.set('radius', Number(els.radius.value));
+      return url;
+    }
+
+    function updatePreview(){
+      els.radiusText.textContent = els.radius.value;
+      els.radiusCard.textContent = `${els.radius.value}m`;
+      els.centerCard.textContent = `${Number(els.lat.value).toFixed(5)}, ${Number(els.lng.value).toFixed(5)}`;
+      els.endpointPreview.textContent = buildEndpoint().toString();
+      drawCenterOnly();
+    }
+
+    function normalizeDenue(item){
+      // INEGI DENUE normalmente devuelve campos como Nombre, Clase_actividad, Latitud, Longitud, Tipo_vialidad, Calle, Num_Exterior, Colonia, Estrato.
+      const lat = Number(item.Latitud ?? item.latitud ?? item.lat ?? item.geometry?.coordinates?.[1]);
+      const lng = Number(item.Longitud ?? item.longitud ?? item.lng ?? item.lon ?? item.geometry?.coordinates?.[0]);
+      const addressParts = [item.Tipo_vialidad, item.Calle, item.Num_Exterior, item.Colonia, item.CP].filter(Boolean);
+      return {
+        raw: item,
+        name: item.Nombre ?? item.nombre ?? item.name ?? 'Sin nombre',
+        activity: item.Clase_actividad ?? item.clase_actividad ?? item.Actividad ?? item.properties?.class ?? 'Actividad no especificada',
+        address: addressParts.length ? addressParts.join(' ') : (item.Direccion ?? item.direccion ?? 'Dirección no disponible'),
+        staff: item.Estrato ?? item.estrato ?? '—',
+        lat, lng
+      };
+    }
+
+    function initMap(){
+      if(map) return;
+      map = L.map('map', { zoomControl:false }).setView([Number(els.lat.value), Number(els.lng.value)], 14);
+      L.control.zoom({ position:'bottomright' }).addTo(map);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OpenStreetMap' }).addTo(map);
+      markersLayer = L.layerGroup().addTo(map);
+      radiusLayer = L.layerGroup().addTo(map);
+    }
+
+    function drawCenterOnly(){
+      initMap();
+      const lat = Number(els.lat.value), lng = Number(els.lng.value), radius = Number(els.radius.value);
+      radiusLayer.clearLayers();
+      if(centerMarker) markersLayer.removeLayer(centerMarker);
+      centerMarker = L.marker([lat,lng]).bindPopup('<b>Centro de análisis</b>');
+      centerMarker.addTo(markersLayer);
+      L.circle([lat,lng], { radius, color:'#BC955C', fillColor:'#BC955C', fillOpacity:.08, weight:2, dashArray:'8 8' }).addTo(radiusLayer);
+      map.setView([lat,lng], radius <= 800 ? 15 : 14);
+    }
+
+    function renderMap(rows){
+      initMap();
+      markersLayer.clearLayers();
+      drawCenterOnly();
+      rows.filter(r => Number.isFinite(r.lat) && Number.isFinite(r.lng)).forEach(r => {
+        L.circleMarker([r.lat, r.lng], {
+          radius:6, color:'#9F2241', fillColor:'#9F2241', fillOpacity:.85, weight:2
+        }).bindPopup(`<b>${escapeHtml(r.name)}</b><br>${escapeHtml(r.activity)}<br><small>${escapeHtml(r.address)}</small>`).addTo(markersLayer);
+      });
+    }
+
+    function renderTable(rows){
+      if(!rows.length){
+        els.resultsTable.innerHTML = `<tr><td colspan="4" class="p-6 text-center font-bold text-[#9F2241]/50">Sin resultados para mostrar.</td></tr>`;
+        return;
+      }
+      els.resultsTable.innerHTML = rows.map(r => `
+        <tr class="hover:bg-[#F6F1EB]/60">
+          <td class="p-3 font-black text-[#691C32]">${escapeHtml(r.name)}</td>
+          <td class="p-3 font-semibold text-[#691C32]/75">${escapeHtml(r.activity)}</td>
+          <td class="p-3 font-semibold text-[#691C32]/75">${escapeHtml(r.address)}</td>
+          <td class="p-3 font-bold text-[#9F2241]">${escapeHtml(String(r.staff))}</td>
+        </tr>`).join('');
+    }
+
+    function setCompetition(total){
+      let label = 'Baja', color = '#2E7D32';
+      if(total >= 30){ label = 'Alta'; color = '#C62828'; }
+      else if(total >= 10){ label = 'Media'; color = '#BC955C'; }
+      els.competitionLevel.textContent = label;
+      els.competitionLevel.style.color = color;
+    }
+
+    async function searchDenue(){
+      const condition = els.condition.value.trim();
+      if(!condition){ alert('Escribe un giro o condición de búsqueda.'); return; }
+      els.apiStatus.textContent = 'Consultando...';
+      els.apiStatus.className = 'badge bg-white/10 text-white loading';
+      els.btnSearch.disabled = true;
+      els.btnSearch.textContent = 'Consultando API...';
+
+      try{
+        const endpoint = buildEndpoint();
+        const res = await fetch(endpoint.toString(), { method:'GET', headers:{ 'Accept':'application/json' } });
+        const data = await res.json();
+        if(!res.ok){ throw new Error(data?.error || `Error HTTP ${res.status}`); }
+
+        lastData = Array.isArray(data) ? data.map(normalizeDenue) : [];
+        els.totalResults.textContent = lastData.length;
+        setCompetition(lastData.length);
+        renderMap(lastData);
+        renderTable(lastData);
+        els.rawJson.textContent = JSON.stringify(data, null, 2);
+        els.btnDownload.disabled = !lastData.length;
+        els.apiStatus.textContent = 'Consulta exitosa';
+        els.apiStatus.className = 'badge bg-green-100 text-green-800';
+      }catch(err){
+        console.error(err);
+        els.apiStatus.textContent = 'Error API';
+        els.apiStatus.className = 'badge bg-red-100 text-red-800';
+        els.rawJson.textContent = JSON.stringify({ error: err.message, ayuda: 'Revisa la ruta del proxy, CORS permitido en PHP y que el token INEGI sea válido.' }, null, 2);
+      }finally{
+        els.btnSearch.disabled = false;
+        els.btnSearch.textContent = 'Consultar API DENUE';
+      }
+    }
+
+    function escapeHtml(str){
+      return String(str).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[c]));
+    }
+
+    $('btnUseLocation').onclick = () => {
+      if(!navigator.geolocation){ alert('Tu navegador no soporta geolocalización.'); return; }
+      navigator.geolocation.getCurrentPosition(pos => {
+        els.lat.value = pos.coords.latitude.toFixed(6);
+        els.lng.value = pos.coords.longitude.toFixed(6);
+        updatePreview();
+      }, () => alert('No se pudo obtener tu ubicación.'));
+    };
+
+    $('btnDemo').onclick = () => {
+      els.lat.value = '19.4194';
+      els.lng.value = '-99.1621';
+      els.condition.value = 'cafeteria';
+      els.radius.value = '800';
+      updatePreview();
+    };
+
+    els.btnSearch.onclick = searchDenue;
+    els.btnDownload.onclick = () => {
+      const blob = new Blob([JSON.stringify(lastData.map(r => r.raw), null, 2)], { type:'application/json;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `denue_${els.condition.value}_${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+
+    els.filter.oninput = () => {
+      const q = els.filter.value.toLowerCase().trim();
+      const rows = lastData.filter(r => [r.name, r.activity, r.address, r.staff].join(' ').toLowerCase().includes(q));
+      renderTable(rows);
+      renderMap(rows);
+    };
+
+    ['proxyUrl','condition','lat','lng','radius'].forEach(id => $(id).addEventListener('input', updatePreview));
+    updatePreview();
+  </script>
+</body>
+</html>
