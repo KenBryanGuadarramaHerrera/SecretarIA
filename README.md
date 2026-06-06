@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SecretarIA — SEDECO CDMX
 
-## Getting Started
+### Sistema Inteligente para la Automatización, Predicción y Auditoría de Trámites Económicos
 
-First, run the development server:
+SecretarIA es una plataforma web diseñada para mitigar la saturación burocrática en la **Secretaría de Desarrollo Económico de la Ciudad de México (SEDECO)**. Automatiza la lectura, clasificación, validación y dictaminación de expedientes mediante **IA**, manteniendo siempre al funcionario en control del proceso (*Man-in-the-Loop*).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## Propuesta de Valor
+
+* **Eficiencia Operativa:** Reduce el tiempo de procesamiento de expedientes de días a segundos.
+* **Transparencia de Razonamiento (XAI):** El sistema explica *cómo y bajo qué criterios* razonó la IA antes de emitir una sugerencia.
+* **Supervisión Humana Obligatoria:** La IA propone, pero jamás ejecuta. El funcionario corrige, edita o rechaza con un clic.
+* **Portal Ciudadano Guiado:** Chat conversacional que detecta el trámite, solicita los documentos correctos y genera folio automáticamente.
+
+---
+
+## Módulos Implementados
+
+### Portal Ciudadano
+- **Iniciar trámite** — chat conversacional que detecta el tipo de trámite (aviso de funcionamiento, licencia con alcohol, apoyo FONDESO, etc.), lista los documentos requeridos y procesa el expediente con OCR
+- **Seguimiento** — consulta de estado por folio con línea de tiempo del historial
+- **Consulta rápida** — búsqueda semántica de requisitos, costos y tiempos por tipo de negocio
+
+### Panel Funcionario
+- **Bandeja de entrada** — inbox con filtros por prioridad/estado, indicador de días hábiles restantes por plazo legal
+- **Detalle de caso** — análisis generado por Saptiva KAL, documentos del expediente con validación OCR, timer de plazo legal, generador de borrador de respuesta oficial
+- **Panel de control (KPIs)** — métricas de solicitudes, tiempo de respuesta, gráficas por tipo de trámite y tabla de riesgo de vencimiento
+
+---
+
+## Stack Tecnológico
+
+### Frontend / App
+* **Next.js 15** (App Router, TypeScript)
+* **Design system SEDECO** — branding CDMX con paleta institucional
+* **GSAP** — animaciones y transiciones
+
+### IA — API Saptiva
+* **Saptiva OCR** — extracción de texto de imágenes y PDFs escaneados
+* **Saptiva Embed** — embeddings para clasificación automática por similitud coseno
+* **Saptiva KAL** — modelo Mistral 24B con contexto México/CDMX para análisis de casos y redacción de respuestas oficiales
+
+### Pipeline de procesamiento
+```
+Documento → OCR (extracción de texto) → Embed (clasificación por categoría) → KAL (análisis + borrador)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Instalación y ejecución
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cp .env.example .env.local   # agregar SAPTIVA_API_KEY
+npm install
+npm run dev                  # http://localhost:3000
+```
 
-## Learn More
+### Variables de entorno
+```
+SAPTIVA_API_KEY=obtener en lab.saptiva.com
+SAPTIVA_BASE_URL=https://api.saptiva.com
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Arquitectura del proyecto
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+├── app/
+│   ├── page.tsx              # SPA — portal ciudadano + panel funcionario
+│   ├── layout.tsx
+│   ├── globals.css           # Design system SEDECO
+│   └── api/process/route.ts  # Pipeline OCR → Embed → KAL
+├── components/platform/
+│   ├── Icons.tsx             # Iconografía y badges
+│   ├── CitizenPortal.tsx     # Portal ciudadano (chat, seguimiento, consulta)
+│   └── AdminPanel.tsx        # Panel funcionario (bandeja, caso, dashboard)
+├── data/
+│   └── sedeco.ts             # Datos tipados: casos, folios, consultas
+└── lib/
+    ├── saptiva.ts            # Cliente API (OCR, embed, KAL)
+    └── categories.ts         # 8 categorías SEDECO para clasificación
+```
