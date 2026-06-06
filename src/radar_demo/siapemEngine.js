@@ -52,8 +52,8 @@ const ORDEN_IMPACTO = { bajo: 0, vecinal: 1, zonal: 2 };
 /* -------------------------------------------------------------------------- */
 /* 1) Clasificación de impacto del establecimiento                             */
 /* -------------------------------------------------------------------------- */
-export function clasificarImpacto({ giro = 'comercio', superficie = 0, aforo = 0, ventaAlcohol = false, musicaBaile = false }) {
-  const meta = GIROS_SIAPEM[giro] || { label: giro, impactoBase: 'bajo', alcohol: false };
+export function clasificarImpacto({ giro = 'comercio', giroLabel = '', superficie = 0, aforo = 0, ventaAlcohol = false, musicaBaile = false }) {
+  const meta = GIROS_SIAPEM[giro] || { label: giroLabel || giro, impactoBase: 'bajo', alcohol: false };
   let nivel = meta.impactoBase;
   const motivos = [`Giro base clasificado como impacto ${meta.impactoBase}.`];
 
@@ -179,9 +179,9 @@ export function tramitesPorImpacto(impacto, { ventaAlcohol = false, sanitaria = 
 /* -------------------------------------------------------------------------- */
 /* 4) Afluencia de la zona + competencia (proxy con DENUE y mercados)          */
 /* -------------------------------------------------------------------------- */
-export function indiceAfluencia({ center, giro = 'comercio', radius = 1500, denueFeatures = mockDENUE, markets = mockMarkets } = {}) {
+export function indiceAfluencia({ center, giro = 'comercio', giroLabel = '', radius = 1500, denueFeatures = mockDENUE, markets = mockMarkets } = {}) {
   const cercanos = denueFeatures.filter((f) => distanciaM(center, coordsDe(f)) <= radius);
-  const competidores = cercanos.filter((f) => mismoGiro(f.properties.class, giro)).length;
+  const competidores = cercanos.filter((f) => mismoGiro(f.properties.class, giro, giroLabel)).length;
   const distMercado = markets.length ? Math.min(...markets.map((m) => distanciaM(center, coordsDe(m)))) : Infinity;
 
   // Afluencia: densidad económica + cercanía a un mercado público (atractor de flujo)
@@ -302,14 +302,15 @@ function evaluarSIAPEMLocal(input) {
     tamano = 'micro',
     perfil = [],
     denueFeatures = mockDENUE,   // datos DENUE reales (proxy) o mock por defecto
-    markets = mockMarkets
+    markets = mockMarkets,
+    giroLabel = ''
   } = input;
 
   const meta = GIROS_SIAPEM[giro] || {};
-  const impacto = clasificarImpacto({ giro, superficie, aforo, ventaAlcohol, musicaBaile });
+  const impacto = clasificarImpacto({ giro, giroLabel, superficie, aforo, ventaAlcohol, musicaBaile });
   const figuraLegal = recomendarFiguraLegal({ socios, inversion, limitarResponsabilidad, buscaInversion, proyeccionCrecimiento, ventaAlcohol });
   const tramites = tramitesPorImpacto(impacto.nivel, { ventaAlcohol, sanitaria: !!meta.sanitaria });
-  const afluencia = indiceAfluencia({ center, giro, radius, denueFeatures, markets });
+  const afluencia = indiceAfluencia({ center, giro, giroLabel, radius, denueFeatures, markets });
   const programas = programasCDMX({ figura: figuraLegal.figura, giro, tamano, perfil });
 
   return { impacto, figuraLegal, tramites, afluencia, programas, fuente: 'local' };
@@ -317,11 +318,14 @@ function evaluarSIAPEMLocal(input) {
 
 /* --------------------------- Utilidades --------------------------- */
 function coordsDe(f) { const [lng, lat] = f.geometry.coordinates; return { lat, lng }; }
-function mismoGiro(clase = '', giro = '') {
+function mismoGiro(clase = '', giro = '', label = '') {
   const a = String(clase).toLowerCase();
   const meta = GIROS_SIAPEM[giro];
-  const b = (meta ? meta.label : String(giro)).toLowerCase();
-  return a.includes(b.split(' ')[0]) || (b.includes('caf') && a.includes('caf')) || (b.includes('restaur') && a.includes('restaur')) || (b.includes('farmac') && a.includes('farmac')) || (b.includes('estét') && a.includes('belle'));
+  const b = String(label || (meta ? meta.label : giro)).toLowerCase();
+  if (!a || !b) return false;
+  const palabras = b.replace(/[^a-záéíóúñ ]/gi, ' ').split(' ').filter((w) => w.length > 4);
+  if (palabras.some((w) => a.includes(w))) return true;
+  return (b.includes('caf') && a.includes('caf')) || (b.includes('restaur') && a.includes('restaur')) || (b.includes('farmac') && a.includes('farmac')) || (b.includes('bellez') && a.includes('bellez'));
 }
 function distanciaM(a, b) {
   const R = 6371000, t = Math.PI / 180;
